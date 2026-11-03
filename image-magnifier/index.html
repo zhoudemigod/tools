@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图片放大镜 — 看清每一处细节</title>
+  <style>
+    /* Shared colors and measurements keep the offline interface consistent. */
+    :root { color-scheme: light; font-family: Inter, "Segoe UI", sans-serif; color: #24312c; background: #f5f6f2; accent-color: #34765a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, .image-wrap:focus-visible { outline: 3px solid #6aab89; outline-offset: 5px; }
+    .app { max-width: 1520px; margin: auto; padding: 20px 24px 12px; }
+    header { min-height: 48px; display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 16px; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; color: #315c8d; }
+    .brand-logo { width: 34px; height: 34px; flex: 0 0 auto; }
+    .brand-copy { display: flex; align-items: baseline; gap: 12px; }
+    .brand-name { color: #4186f5; font-size: 16px; font-weight: 750; letter-spacing: .04em; }
+    h1 { color: #24312c; font-size: 15px; font-weight: 550; letter-spacing: 0; margin: 0; padding-left: 12px; border-left: 1px solid #d8dfd8; }
+    .header-note { display: flex; align-items: center; gap: 18px; }
+    p { color: #738078; line-height: 1.6; margin: 0; font-size: 14px; }
+    .privacy { font-size: 12px; color: #65766a; white-space: nowrap; }
+    .privacy::before { content: '●'; color: #47946a; margin-right: 8px; }
+    .layout { display: grid; grid-template-columns: 200px minmax(0, 1fr) 272px; gap: 14px; align-items: start; transition: grid-template-columns 180ms ease; }
+    .layout.resources-collapsed { grid-template-columns: 54px minmax(0, 1fr) 272px; }
+    .viewer, aside { border: 1px solid #dee4dc; border-radius: 12px; background: #fff; overflow: hidden; }
+    .viewer { min-width: 0; }
+    .bar { min-height: 48px; border-bottom: 1px solid #e8ece5; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 12px; color: #738078; }
+    #filename { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #344b3c; }
+    #dimensions { white-space: nowrap; }
+    .stage { height: clamp(520px, calc(100vh - 190px), 780px); padding: 24px; display: flex; align-items: center; justify-content: center; background-color: #fafbf8; background-image: radial-gradient(#dce2d9 .7px, transparent .7px); background-size: 14px 14px; }
+    .stage.dragging { background-color: #e5f0e8; outline: 2px dashed #34765a; outline-offset: -10px; }
+    .empty { text-align: center; max-width: 310px; }
+    .icon { margin: 0 auto 22px; width: 64px; height: 64px; border: 1px solid #d8e5d9; border-radius: 18px; display: grid; place-items: center; background: #eff5ed; color: #34765a; }
+    .empty h2 { font-size: 21px; font-weight: 550; letter-spacing: -.025em; margin: 0 0 10px; }
+    .primary { border: 0; border-radius: 8px; background: #34765a; color: white; padding: 12px 20px; font-weight: 600; font-size: 13px; }
+    .primary:hover { background: #285e47; }
+    .empty .primary { margin: 24px 0 12px; }
+    .small { font-size: 11px; }
+    .image-wrap { position: relative; max-width: 100%; line-height: 0; touch-action: none; cursor: crosshair; }
+    #photo { display: block; max-width: 100%; max-height: min(732px, calc(100vh - 238px)); width: auto; height: auto; user-select: none; }
+    #lens { position: absolute; pointer-events: none; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #304b3e55, 0 8px 24px #172c3c33; background-repeat: no-repeat; background-color: #edf0eb; }
+    #lens::after { content: ''; position: absolute; width: 12px; height: 12px; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid #ffffffc0; border-radius: 50%; box-shadow: 0 0 0 1px #0003; }
+    aside { padding: 20px; }
+    aside h2 { margin: 0 0 22px; font-size: 15px; font-weight: 650; }
+    .resource-panel { min-width: 0; padding: 14px; transition: padding 180ms ease; }
+    .resource-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 34px; }
+    .resource-panel-header h2 { margin: 0; color: #344b3c; font-size: 14px; white-space: nowrap; }
+    .panel-toggle { min-width: 36px; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid #dbe2d8; border-radius: 7px; background: #fff; color: #526257; font-size: 11px; }
+    .panel-toggle:hover { color: #315c8d; background: #f3f6f2; }
+    .panel-toggle:focus-visible { outline: 3px solid #6aab89; outline-offset: 2px; }
+    .toggle-icon { font-size: 18px; line-height: 1; }
+    .resource-panel-body { margin-top: 12px; }
+    .resources-collapsed .resource-panel { padding: 10px 8px; }
+    .resources-collapsed .panel-title, .resources-collapsed .toggle-text { display: none; }
+    .control { margin-bottom: 24px; }
+    .label-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 15px; }
+    output { font-size: 12px; font-weight: 650; background: #edf4ed; padding: 5px 9px; border-radius: 6px; color: #34765a; }
+    input[type=range] { width: 100%; margin: 0; cursor: pointer; }
+    .ends { display: flex; justify-content: space-between; color: #8a958d; font-size: 11px; margin-top: 8px; }
+    .buttons { border-top: 1px solid #e8ece5; padding-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .secondary { border: 1px solid #dbe2d8; border-radius: 8px; background: white; padding: 11px; color: #526257; font-size: 12px; }
+    .secondary:hover { background: #f5f7f2; }
+    .tip { background: #f4f7f0; border-radius: 8px; padding: 12px; margin-top: 16px; font-size: 11px; }
+    .tip strong { display: block; color: #526b53; margin-bottom: 5px; font-weight: 600; }
+    .resource-section { border-top: 1px solid #e8ece5; margin-top: 18px; padding-top: 18px; }
+    .resource-panel .resource-section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+    .section-heading { display: block; margin-bottom: 10px; color: #7b877f; font-size: 11px; font-weight: 650; letter-spacing: .08em; }
+    .resource-list { display: grid; gap: 5px; }
+    .resource-link { min-height: 42px; display: flex; align-items: center; gap: 10px; padding: 8px 9px; border-radius: 7px; color: #31433a; text-decoration: none; transition: background-color 160ms ease, color 160ms ease; }
+    .resource-link:hover { color: #315c8d; background: #f3f6f2; }
+    .resource-link:focus-visible { outline: 3px solid #6aab89; outline-offset: 2px; }
+    .resource-icon { width: 18px; height: 18px; flex: 0 0 auto; color: #5d7166; }
+    .resource-copy { min-width: 0; display: grid; gap: 1px; }
+    .resource-copy strong { font-size: 12px; font-weight: 650; }
+    .resource-copy span { overflow: hidden; color: #89938d; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .resource-arrow { margin-left: auto; color: #9da69f; font-size: 14px; }
+    .qr-block { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: 13px; }
+    .qr-placeholder { width: 84px; height: 84px; position: relative; display: grid; place-items: center; border: 1px dashed #aebbb2; border-radius: 8px; background: #f8faf7; color: #849087; font-size: 10px; text-align: center; }
+    .qr-placeholder::before, .qr-placeholder::after { content: ''; position: absolute; width: 13px; height: 13px; border: 3px solid #567263; }
+    .qr-placeholder::before { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+    .qr-placeholder::after { right: 8px; bottom: 8px; border-top: 0; border-left: 0; }
+    .qr-copy strong { display: block; margin-bottom: 5px; color: #344b3c; font-size: 12px; }
+    .qr-copy p { font-size: 10px; line-height: 1.5; }
+    footer { display: flex; justify-content: space-between; gap: 16px; padding: 12px 2px 0; font-size: 10px; color: #879185; }
+    #status { color: #526b53; font-size: 12px; min-height: 20px; margin-top: 12px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 1100px) { .layout { grid-template-columns: 200px minmax(0, 1fr); } .layout.resources-collapsed { grid-template-columns: 54px minmax(0, 1fr); } .settings-panel { grid-column: 1 / -1; } }
+    @media (max-width: 760px) { .app { padding: 16px 12px 10px; } header { align-items: flex-start; flex-direction: column; gap: 10px; margin-bottom: 14px; } .brand-copy { align-items: flex-start; flex-direction: column; gap: 2px; } h1 { padding: 0; border: 0; font-size: 13px; } .header-note { width: 100%; justify-content: space-between; gap: 12px; } .header-note p { font-size: 12px; } .layout, .layout.resources-collapsed { grid-template-columns: minmax(0, 1fr); } .resource-panel, .viewer, .settings-panel { grid-column: 1; } .stage { height: min(66vh, 560px); min-height: 360px; padding: 16px; } #photo { max-height: calc(min(66vh, 560px) - 32px); } aside { padding: 20px; } .resources-collapsed .resource-panel { padding: 10px 14px; } footer { flex-wrap: wrap; } }
+    @media (prefers-reduced-motion: reduce) { .layout, .resource-panel, .resource-link { transition-duration: .01ms; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <svg class="brand-logo" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="200" height="200" aria-hidden="true"><path d="M512 512m-512 0a512 512 0 1 0 1024 0 512 512 0 1 0-1024 0Z" fill="#4186F5"></path><path d="M611.944 302.056c0-15.701 2.75-30.802 7.816-44.917a384.238 384.238 0 0 0-186.11 2.956c-74.501-50.063-93.407-71.902-107.975-39.618a136.243 136.243 0 0 0-3.961 102.287 149.515 149.515 0 0 0-39.949 104.806c0 148.743 92.139 181.875 179.961 191.61a83.898 83.898 0 0 0-25.192 51.863c-40.708 22.518-91.94 8.261-115.181-32.058a83.117 83.117 0 0 0-60.466-39.98s-38.871-0.361-2.879 23.408a102.97 102.97 0 0 1 43.912 56.906s23.398 75.279 133.531 51.863v65.913c0 10.443 13.548 42.63 102.328 42.63 71.275 0 94.913-30.385 94.913-42.987V690.485a90.052 90.052 0 0 0-26.996-72.03c83.996-9.381 173.328-40.204 179.6-176.098a164.706 164.706 0 0 1-21.129 1.365c-84.07 0-152.223-63.426-152.223-141.666z" fill="#FFFFFF"></path><path d="M743.554 322.765a136.267 136.267 0 0 0-3.961-102.289s-32.396-10.445-107.979 39.618a385.536 385.536 0 0 0-11.853-2.956 132.623 132.623 0 0 0-7.816 44.917c0 78.24 68.152 141.667 152.222 141.667 7.171 0 14.222-0.472 21.129-1.365 0.231-5.03 0.363-10.187 0.363-15.509a149.534 149.534 0 0 0-42.105-104.083z" fill="#FFFFFF" opacity=".4"></path></svg>
+        <div class="brand-copy">
+          <span class="brand-name">开源好物集</span>
+          <h1>图片放大镜</h1>
+        </div>
+      </div>
+      <div class="header-note"><p>放大图片，看清每一处细节。</p><span class="privacy">本地读取，保护隐私</span></div>
+    </header>
+    <div class="layout" id="layout">
+      <aside class="resource-panel" aria-labelledby="resource-panel-title">
+        <div class="resource-panel-header">
+          <h2 class="panel-title" id="resource-panel-title">相关资源</h2>
+          <button class="panel-toggle" id="resourceToggle" type="button" aria-expanded="true" aria-controls="resourceBody" aria-label="收起相关资源" title="收起相关资源"><span class="toggle-icon" id="toggleIcon" aria-hidden="true">‹</span><span class="toggle-text" id="toggleText">收起</span></button>
+        </div>
+        <div class="resource-panel-body" id="resourceBody">
+          <nav class="resource-section" aria-label="开源好物集相关链接">
+            <span class="section-heading">相关链接</span>
+            <div class="resource-list">
+              <a class="resource-link" href="https://www.huima123.com" target="_blank" rel="noopener noreferrer">
+                <svg class="resource-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9S14.4 18.5 12 21c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3Z"/></svg>
+                <span class="resource-copy"><strong>公司官网</strong><span>huima123.com</span></span><span class="resource-arrow">↗</span>
+              </a>
+              <a class="resource-link" href="https://gitee.com/HD85512b/tools" target="_blank" rel="noopener noreferrer">
+                <svg class="resource-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 7.5 3 12l4 4.5M17 7.5l4 4.5-4 4.5M14 4l-4 16"/></svg>
+                <span class="resource-copy"><strong>码云仓库</strong><span>gitee.com/HD85512b/tools</span></span><span class="resource-arrow">↗</span>
+              </a>
+              <a class="resource-link" href="https://github.com/zhoudemigod/tools" target="_blank" rel="noopener noreferrer">
+                <svg class="resource-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.86c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.84a9.6 9.6 0 0 1 2.5.34c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.56 4.94.36.31.68.92.68 1.86v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+                <span class="resource-copy"><strong>GitHub 仓库</strong><span>github.com/zhoudemigod/tools</span></span><span class="resource-arrow">↗</span>
+              </a>
+            </div>
+          </nav>
+          <section class="resource-section" aria-labelledby="mini-program-title">
+            <span class="section-heading">小程序</span>
+            <div class="qr-block">
+              <div class="qr-placeholder" role="img" aria-label="小程序二维码占位符">二维码<br>占位</div>
+              <div class="qr-copy"><strong id="mini-program-title">微信小程序</strong><p>二维码即将上线，敬请期待。</p></div>
+            </div>
+          </section>
+        </div>
+      </aside>
+      <section class="viewer" aria-label="图片查看区域">
+        <div class="bar"><span id="filename">图片工作区</span><span id="dimensions">尚未选择图片</span></div>
+        <div class="stage" id="stage">
+          <div class="empty" id="empty">
+            <div class="icon"><svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg></div>
+            <h2>让细节清晰可见</h2><p>打开一张本地图片，使用放大镜自由探索图片中的每一处细节。</p>
+            <button class="primary" id="open">选择图片</button><p class="small">也可以将图片拖放到这里</p>
+          </div>
+          <div class="image-wrap" id="wrap" tabindex="0" role="group" aria-label="图片放大区域，可移动鼠标或使用方向键查看细节。" hidden><img id="photo" alt="已选择的图片" draggable="false"><div id="lens" hidden></div></div>
+        </div>
+      </section>
+      <aside class="settings-panel" aria-label="放大镜设置">
+        <h2>放大镜设置</h2>
+        <div class="control"><div class="label-row"><label for="zoom">放大倍率</label><output id="zoomValue" for="zoom">2 倍</output></div><input id="zoom" type="range" min="1" max="8" step="0.25" value="2"><div class="ends"><span>1 倍</span><span>8 倍</span></div></div>
+        <div class="control"><div class="label-row"><label for="size">镜面大小</label><output id="sizeValue" for="size">180 像素</output></div><input id="size" type="range" min="80" max="360" step="10" value="180"><div class="ends"><span>80 像素</span><span>360 像素</span></div></div>
+        <div class="buttons"><button class="primary" id="replace">打开图片</button><button class="secondary" id="reset">重置设置</button></div>
+        <p class="tip"><strong>操作提示</strong>在图片上移动鼠标即可放大查看；触屏设备可拖动查看。也可以用 Tab 键选中图片，再按方向键移动放大镜。</p>
+        <p id="status" role="status" aria-live="polite"></p>
+      </aside>
+    </div>
+    <footer><span>从小细节，发现大不同。</span><span>无需上传 · 无需登录 · 支持离线</span></footer>
+    <input id="file" type="file" accept="image/*" hidden>
+  </main>
+  <script>
+    'use strict';
+    /** UI elements, shared by the viewer and its settings. */
+    const ui = Object.fromEntries(['file','open','replace','reset','stage','empty','wrap','photo','lens','zoom','size','zoomValue','sizeValue','filename','dimensions','status','layout','resourceToggle','resourceBody','toggleIcon','toggleText'].map(id => [id, document.getElementById(id)]));
+    /** Relative lens position stays stable when the image resizes. */
+    const point = { x: 0.5, y: 0.5 };
+    /** Active object URL is released when another image replaces it. */
+    let activeUrl = '';
+    /** Request sequence prevents an earlier slow file from replacing a newer one. */
+    let requestId = 0;
+
+    /** Paint the lens using the displayed image scale rather than natural pixels. */
+    function render() {
+      // 1. Update readable settings, even before a photo is loaded.
+      ui.zoomValue.value = `${Number(ui.zoom.value)} 倍`;
+      ui.sizeValue.value = `${ui.size.value} 像素`;
+      if (!activeUrl) return;
+      /** Display dimensions in CSS pixels. */
+      const bounds = ui.photo.getBoundingClientRect();
+      /** Requested diameter, limited by viewport width on small devices. */
+      const diameter = Math.min(Number(ui.size.value), Math.max(60, ui.stage.clientWidth - 16));
+      /** Magnification relative to the fitted preview. */
+      const zoom = Number(ui.zoom.value);
+      /** Lens center in displayed-image coordinates. */
+      const x = point.x * bounds.width, y = point.y * bounds.height;
+      // 2. WHY: matching the background origin to the pointer keeps the inspected detail centered.
+      Object.assign(ui.lens.style, { width: `${diameter}px`, height: `${diameter}px`, left: `${x - diameter / 2}px`, top: `${y - diameter / 2}px`, backgroundSize: `${bounds.width * zoom}px ${bounds.height * zoom}px`, backgroundPosition: `${(diameter - 6) / 2 - x * zoom}px ${(diameter - 6) / 2 - y * zoom}px` });
+    }
+
+    /** Update the resource panel and expose its current state to assistive technology.
+     * @param {boolean} collapsed Whether the links and QR code should be hidden.
+     */
+    function setResourcesCollapsed(collapsed) {
+      // 1. Change the visual layout and remove hidden links from keyboard navigation.
+      ui.layout.classList.toggle('resources-collapsed', collapsed);
+      ui.resourceBody.hidden = collapsed;
+      // 2. Keep the button's visible label, tooltip, and expanded state consistent.
+      const action = collapsed ? '展开相关资源' : '收起相关资源';
+      ui.resourceToggle.setAttribute('aria-expanded', String(!collapsed));
+      ui.resourceToggle.setAttribute('aria-label', action);
+      ui.resourceToggle.title = action;
+      ui.toggleIcon.textContent = collapsed ? '›' : '‹';
+      ui.toggleText.textContent = collapsed ? '展开' : '收起';
+      render();
+    }
+
+    /** Decode a local image before replacing the current preview.
+     * @param {File} file Local image selected or dropped by the user.
+     */
+    async function loadImage(file) {
+      // 1. Reject non-images while leaving the existing preview usable.
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { ui.status.textContent = '请选择浏览器支持的图片文件。'; return; }
+      /** This file's sequence number and temporary browser-only URL. */
+      const ticket = ++requestId, url = URL.createObjectURL(file);
+      /** Offscreen decoder prevents broken images from replacing a valid preview. */
+      const candidate = new Image();
+      ui.status.textContent = '正在打开图片…';
+      try {
+        // 2. Decode first; ignore stale requests after a newer selection.
+        candidate.src = url;
+        await candidate.decode();
+        if (ticket !== requestId) { URL.revokeObjectURL(url); return; }
+        if (activeUrl) URL.revokeObjectURL(activeUrl);
+        activeUrl = url;
+        ui.photo.src = url;
+        ui.photo.alt = file.name;
+        ui.lens.style.backgroundImage = `url("${url}")`;
+        ui.empty.hidden = true;
+        ui.wrap.hidden = false;
+        ui.lens.hidden = false;
+        point.x = point.y = 0.5;
+        ui.filename.textContent = file.name;
+        ui.dimensions.textContent = `${candidate.naturalWidth} × ${candidate.naturalHeight}`;
+        ui.status.textContent = '图片已就绪，可以开始查看。';
+        // 3. Wait for the new visible image to obtain its displayed dimensions.
+        await ui.photo.decode();
+        if (ticket === requestId) render();
+      } catch {
+        URL.revokeObjectURL(url);
+        if (ticket === requestId) ui.status.textContent = '无法打开这张图片，请尝试其他图片文件。';
+      }
+    }
+
+    /** Track a pointer within image boundaries.
+     * @param {PointerEvent} event Mouse, pen, or touch position.
+     */
+    function moveLens(event) {
+      /** Current visible image bounds. */
+      const bounds = ui.photo.getBoundingClientRect();
+      // 1. Clamp sampling to the image, including captured touch movement outside it.
+      point.x = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+      point.y = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
+      // 2. Reveal the lens and synchronize its background.
+      ui.lens.hidden = false;
+      render();
+    }
+
+    /** Open the native picker; clearing its value allows selecting the same file again. */
+    function openPicker() { ui.file.value = ''; ui.file.click(); }
+    ui.open.addEventListener('click', openPicker);
+    ui.replace.addEventListener('click', openPicker);
+    ui.file.addEventListener('change', () => loadImage(ui.file.files[0]));
+    ui.zoom.addEventListener('input', render);
+    ui.size.addEventListener('input', render);
+    /** Toggle the left resource panel while preserving the image viewer's available space. */
+    ui.resourceToggle.addEventListener('click', () => setResourcesCollapsed(ui.resourceToggle.getAttribute('aria-expanded') === 'true'));
+    /** Restore defaults without discarding the user's image. */
+    ui.reset.addEventListener('click', () => { ui.zoom.value = '2'; ui.size.value = '180'; point.x = point.y = 0.5; render(); });
+    ui.wrap.addEventListener('pointermove', moveLens);
+    /** Capture touch dragging to continue tracking beyond the image edge. */
+    ui.wrap.addEventListener('pointerdown', event => { ui.wrap.setPointerCapture(event.pointerId); moveLens(event); });
+    /** Hide the lens when leaving with a mouse, but retain touch inspection. */
+    ui.wrap.addEventListener('pointerleave', event => { if (event.pointerType === 'mouse') ui.lens.hidden = true; });
+    ui.wrap.addEventListener('focus', () => { ui.lens.hidden = false; render(); });
+    /** Provide keyboard access with finer steps, or larger steps while Shift is held. */
+    ui.wrap.addEventListener('keydown', event => {
+      if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
+      event.preventDefault();
+      /** Relative travel per key press. */
+      const step = event.shiftKey ? 0.1 : 0.02;
+      point.x = Math.max(0, Math.min(1, point.x + (event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0)));
+      point.y = Math.max(0, Math.min(1, point.y + (event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0)));
+      ui.lens.hidden = false;
+      render();
+    });
+    /** Allow a dropped file without letting the browser navigate away. */
+    ui.stage.addEventListener('dragover', event => { event.preventDefault(); ui.stage.classList.add('dragging'); });
+    ui.stage.addEventListener('dragleave', () => ui.stage.classList.remove('dragging'));
+    /** Load only the first image because this workspace is intentionally single-image. */
+    ui.stage.addEventListener('drop', event => { event.preventDefault(); ui.stage.classList.remove('dragging'); loadImage(event.dataTransfer.files[0]); });
+    /** Recalculate sampling when responsive layout changes the preview size. */
+    new ResizeObserver(render).observe(ui.photo);
+    setResourcesCollapsed(false);
+  </script>
+</body>
+</html>
