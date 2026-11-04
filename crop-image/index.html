@@ -1,0 +1,1945 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图片裁剪与拼接 — 开源好物集</title>
+  <style>
+    /* 页面使用统一的中性底色与蓝绿色强调色，保持离线工具的视觉一致性。 */
+    :root {
+      color-scheme: light;
+      font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #25312c;
+      background: #f5f6f2;
+      accent-color: #34765a;
+      /* 桌面端操作面板与功能切换栏共用宽度，确保两者左右边界严格对齐。 */
+      --control-panel-width: 310px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 0; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .48; }
+    button:focus-visible, input:focus-visible, select:focus-visible, canvas:focus-visible {
+      outline: 3px solid #70a88b;
+      outline-offset: 3px;
+    }
+    .skip-link {
+      position: fixed;
+      z-index: 20;
+      top: 10px;
+      left: 10px;
+      transform: translateY(-160%);
+      border-radius: 8px;
+      background: #25312c;
+      color: #fff;
+      padding: 10px 14px;
+      text-decoration: none;
+    }
+    .skip-link:focus { transform: translateY(0); }
+    .app { width: min(1500px, 100%); margin: auto; padding: 20px 24px 16px; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 48px;
+      margin-bottom: 18px;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 11px; }
+    .brand-logo { width: 36px; height: 36px; flex: 0 0 auto; }
+    .brand-copy { display: flex; align-items: baseline; gap: 12px; }
+    .brand-name { color: #4186f5; font-size: 1rem; font-weight: 750; letter-spacing: .04em; }
+    h1 {
+      margin: 0;
+      padding-left: 12px;
+      border-left: 1px solid #d8dfd8;
+      color: #25312c;
+      font-size: .95rem;
+      font-weight: 600;
+    }
+    .privacy { color: #647269; font-size: .78rem; white-space: nowrap; }
+    .privacy::before { content: "●"; margin-right: 8px; color: #47946a; }
+    .intro {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+    .intro h2 { margin: 0 0 6px; font-size: clamp(1.4rem, 2.4vw, 2rem); letter-spacing: -.035em; }
+    .intro p { margin: 0; color: #758078; font-size: .86rem; line-height: 1.6; }
+    .tabs {
+      width: var(--control-panel-width);
+      display: inline-flex;
+      gap: 5px;
+      padding: 5px;
+      border: 1px solid #dfe5dd;
+      border-radius: 10px;
+      background: #fff;
+    }
+    .tab {
+      flex: 1 1 0;
+      min-height: 40px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #657169;
+      padding: 8px 16px;
+      font-size: .82rem;
+      font-weight: 650;
+    }
+    .tab:hover { background: #f3f6f1; color: #294d3c; }
+    .tab[aria-selected="true"] { background: #34765a; color: #fff; }
+    .content-layout {
+      display: grid;
+      grid-template-columns: 218px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      transition: grid-template-columns 180ms ease;
+    }
+    .content-layout.resources-collapsed { grid-template-columns: 58px minmax(0, 1fr); }
+    .tool-area { min-width: 0; }
+    .tool-panel { min-width: 0; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) var(--control-panel-width); gap: 16px; align-items: start; }
+    .workspace .preview-card { grid-column: 1; grid-row: 1; }
+    .workspace .controls { grid-column: 2; grid-row: 1; }
+    .controls, .preview-card {
+      border: 1px solid #dfe5dd;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .controls { padding: 20px; }
+    .controls h3, .preview-heading h3 { margin: 0; font-size: .95rem; font-weight: 700; }
+    .section-note { margin: 6px 0 0; color: #859087; font-size: .72rem; line-height: 1.55; }
+    .control-group { margin-top: 20px; }
+    .control-group + .control-group { padding-top: 18px; border-top: 1px solid #edf0eb; }
+    .field { display: grid; gap: 7px; margin-top: 12px; }
+    .field:first-child { margin-top: 0; }
+    .field label, .field legend { color: #46564d; font-size: .76rem; font-weight: 650; }
+    .ratio-field { margin: 12px 0 0; padding: 0; border: 0; }
+    .ratio-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 7px; }
+    .ratio-option { position: relative; min-width: 0; cursor: pointer; }
+    .ratio-option input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+    .ratio-option span {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid #d9e0d8;
+      border-radius: 7px;
+      background: #fff;
+      color: #54645b;
+      font-size: .72rem;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .ratio-option span::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border: 1px solid #aab7ae;
+      border-radius: 4px;
+      background: #fff;
+      color: #fff;
+      font-size: .62rem;
+      line-height: 1;
+    }
+    .ratio-option:hover span { border-color: #8eaa98; background: #f7f9f5; }
+    .ratio-option input:checked + span { border-color: #34765a; background: #eef5f0; color: #285e47; }
+    .ratio-option input:checked + span::before { content: "✓"; border-color: #34765a; background: #34765a; }
+    .ratio-option input:focus-visible + span { outline: 2px solid #70a88b; outline-offset: 1px; }
+    .join-direction-field { margin: 0; padding: 0; border: 0; }
+    .join-direction-options { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 7px; }
+    .grid-preset-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .join-size-field { margin-bottom: 10px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    input[type="number"], select, input[type="text"] {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #d9e0d8;
+      border-radius: 7px;
+      background: #fff;
+      color: #2e3d35;
+      padding: 8px 10px;
+    }
+    input[type="color"] {
+      width: 100%;
+      height: 40px;
+      border: 1px solid #d9e0d8;
+      border-radius: 7px;
+      background: #fff;
+      padding: 4px;
+    }
+    input[type="range"] { width: 100%; margin: 3px 0 0; }
+    .controls input[type="number"]:focus-visible,
+    .controls input[type="color"]:focus-visible,
+    .controls select:focus-visible {
+      outline-width: 2px;
+      outline-offset: 1px;
+    }
+    .range-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    output { color: #34765a; font-size: .74rem; font-weight: 700; }
+    .file-picker {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px dashed #98ad9e;
+      border-radius: 8px;
+      background: #f8faf7;
+      color: #315b46;
+      font-size: .8rem;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .file-picker:hover { border-color: #34765a; background: #f1f6f1; }
+    .file-picker:focus-within { outline: 3px solid #70a88b; outline-offset: 3px; }
+    .file-picker input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px; }
+    .action-row.single { grid-template-columns: 1fr; }
+    .button {
+      min-height: 42px;
+      border: 1px solid #d9e0d8;
+      border-radius: 8px;
+      background: #fff;
+      color: #4d5f55;
+      padding: 9px 13px;
+      font-size: .78rem;
+      font-weight: 650;
+    }
+    .button:hover:not(:disabled) { background: #f3f6f1; }
+    .button.primary { border-color: #34765a; background: #34765a; color: #fff; }
+    .button.primary:hover:not(:disabled) { background: #285e47; }
+    .button.small { min-height: 34px; padding: 6px 9px; font-size: .7rem; }
+    .status { min-height: 20px; margin: 12px 0 0; color: #5e6e64; font-size: .72rem; line-height: 1.5; }
+    .status.error { color: #a43d3d; }
+    .preview-card { min-width: 0; overflow: hidden; }
+    .preview-heading {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 13px 17px;
+      border-bottom: 1px solid #e8ece5;
+    }
+    .preview-meta { color: #829087; font-size: .72rem; white-space: nowrap; }
+    .canvas-stage {
+      min-height: clamp(430px, calc(100vh - 240px), 760px);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background-color: #fafbf8;
+      background-image: radial-gradient(#dce2d9 .7px, transparent .7px);
+      background-size: 14px 14px;
+      overflow: auto;
+    }
+    .canvas-stage canvas {
+      display: block;
+      max-width: 100%;
+      max-height: min(700px, calc(100vh - 285px));
+      border-radius: 3px;
+      box-shadow: 0 8px 28px rgba(40, 57, 47, .12);
+      touch-action: none;
+    }
+    #cropCanvas { cursor: move; }
+    .empty-state { max-width: 330px; text-align: center; }
+    .empty-icon {
+      width: 62px;
+      height: 62px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 18px;
+      border: 1px solid #d7e3d8;
+      border-radius: 17px;
+      background: #eff5ed;
+      color: #34765a;
+    }
+    .empty-state strong { display: block; margin-bottom: 7px; font-size: 1rem; }
+    .empty-state p { margin: 0; color: #859087; font-size: .78rem; line-height: 1.6; }
+    .image-list { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
+    .image-item {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      padding: 7px;
+      border: 1px solid #e3e8e1;
+      border-radius: 8px;
+    }
+    .image-item img { width: 38px; height: 38px; border-radius: 5px; object-fit: cover; }
+    .image-info { min-width: 0; }
+    .image-info strong, .image-info span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .image-info strong { color: #3d4d44; font-size: .72rem; }
+    .image-info span { margin-top: 2px; color: #8a958e; font-size: .65rem; }
+    .item-actions { display: flex; gap: 3px; }
+    .icon-button {
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #69786f;
+    }
+    .icon-button:hover:not(:disabled) { background: #edf2ec; color: #315b46; }
+    .grid-stage { align-items: start; }
+    .tiles {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(var(--grid-columns, 3), minmax(0, 1fr));
+      gap: 12px;
+    }
+    .tile-card {
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid #e0e6df;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .tile-card canvas { width: 100%; height: auto; max-height: none; border-radius: 4px; box-shadow: none; }
+    .tile-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; }
+    .tile-footer span { color: #7d8981; font-size: .66rem; }
+    /* 资源栏在宽屏固定于左侧，收起后把宽度让给中央预览。 */
+    .resource-panel {
+      position: sticky;
+      top: 16px;
+      padding: 18px;
+      border: 1px solid #dfe5dd;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .resource-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .resource-panel h3 { margin: 0; font-size: .95rem; }
+    .resource-toggle {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border: 1px solid #dfe5dd;
+      border-radius: 8px;
+      background: #f8faf7;
+      color: #4d6257;
+    }
+    .resource-toggle:hover { border-color: #a9bbae; background: #eff4ee; }
+    .resource-toggle:focus-visible { outline: 3px solid #70a88b; outline-offset: 3px; }
+    .resource-toggle-icon { transition: transform 180ms ease; }
+    .resources-collapsed .resource-panel { padding: 11px; }
+    .resources-collapsed .resource-header { justify-content: center; }
+    .resources-collapsed .resource-panel h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .resources-collapsed .resource-toggle-icon { transform: rotate(180deg); }
+    .resource-note { margin: 6px 0 16px; color: #859087; font-size: .71rem; line-height: 1.5; }
+    .resource-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+    .resource-link {
+      min-height: 48px;
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) 14px;
+      align-items: center;
+      gap: 9px;
+      padding: 8px;
+      border: 1px solid #e3e8e1;
+      border-radius: 8px;
+      color: #33443b;
+      text-decoration: none;
+    }
+    .resource-link:hover { border-color: #a9bbae; background: #f7f9f5; }
+    .resource-link:focus-visible { outline: 3px solid #70a88b; outline-offset: 3px; }
+    .resource-icon {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #eef4ef;
+      color: #34765a;
+    }
+    .resource-copy { min-width: 0; }
+    .resource-copy strong, .resource-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .resource-copy strong { font-size: .72rem; }
+    .resource-copy span { margin-top: 2px; color: #849087; font-size: .61rem; }
+    .resource-arrow { color: #94a198; font-size: .82rem; }
+    .qr-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #edf0eb; }
+    .qr-section h4 { margin: 0 0 10px; color: #46564d; font-size: .75rem; }
+    .qr-placeholder {
+      width: 112px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      margin: 0 auto;
+      border: 1px dashed #aebdb2;
+      border-radius: 8px;
+      background-color: #f7f9f5;
+      background-image: linear-gradient(45deg, #e8ede7 25%, transparent 25%, transparent 75%, #e8ede7 75%), linear-gradient(45deg, #e8ede7 25%, transparent 25%, transparent 75%, #e8ede7 75%);
+      background-position: 0 0, 6px 6px;
+      background-size: 12px 12px;
+      color: #65736a;
+      text-align: center;
+      font-size: .66rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    .qr-caption { margin: 9px 0 0; color: #879188; text-align: center; font-size: .65rem; line-height: 1.5; }
+    footer { display: flex; justify-content: space-between; gap: 16px; padding: 12px 2px 0; color: #8a948d; font-size: .68rem; }
+    [hidden] { display: none !important; }
+    @media (max-width: 900px) {
+      .intro { align-items: stretch; flex-direction: column; }
+      .tabs { width: 100%; }
+      .tab { flex: 1 1 0; }
+      .content-layout { grid-template-columns: 1fr; }
+      .content-layout.resources-collapsed { grid-template-columns: 1fr; }
+      .workspace { grid-template-columns: 1fr; }
+      .workspace .controls, .workspace .preview-card { grid-column: 1; grid-row: auto; }
+      .controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+      .controls > h3, .controls > .section-note, .controls > .action-row, .controls > .status { grid-column: 1 / -1; }
+      .canvas-stage { min-height: 420px; }
+      .resource-panel { position: static; }
+      .resources-collapsed .resource-panel { padding: 11px 18px; }
+      .resources-collapsed .resource-header { justify-content: space-between; }
+      .resources-collapsed .resource-panel h3 { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+      .resource-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .qr-section { display: grid; grid-template-columns: minmax(0, 1fr) 94px; align-items: center; gap: 12px; }
+      .qr-section h4 { grid-column: 1; margin: 0; }
+      .qr-placeholder { grid-column: 2; grid-row: 1 / span 2; width: 94px; }
+      .qr-caption { grid-column: 1; margin: 4px 0 0; text-align: left; }
+    }
+    @media (max-width: 600px) {
+      .app { padding: 14px 12px 10px; }
+      .topbar { align-items: flex-start; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+      .brand-copy { align-items: flex-start; flex-direction: column; gap: 1px; }
+      h1 { padding: 0; border: 0; font-size: .82rem; }
+      .tabs { display: grid; grid-template-columns: 1fr; }
+      .controls { display: block; padding: 17px; }
+      .field-row, .action-row { grid-template-columns: 1fr; }
+      .canvas-stage { min-height: 340px; padding: 12px; }
+      .canvas-stage canvas { max-height: 62vh; }
+      .tiles { grid-template-columns: 1fr; }
+      .resource-list { grid-template-columns: 1fr; }
+      .qr-section { display: block; }
+      .qr-section h4 { margin-bottom: 10px; }
+      .qr-placeholder { width: 112px; }
+      .qr-caption { margin-top: 9px; text-align: center; }
+      footer { flex-wrap: wrap; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <main class="app" id="main-content">
+    <header class="topbar">
+      <div class="brand">
+        <svg class="brand-logo" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M512 512m-512 0a512 512 0 1 0 1024 0 512 512 0 1 0-1024 0Z" fill="#4186F5"/><path d="M611.944 302.056c0-15.701 2.75-30.802 7.816-44.917a384.238 384.238 0 0 0-186.11 2.956c-74.501-50.063-93.407-71.902-107.975-39.618a136.243 136.243 0 0 0-3.961 102.287 149.515 149.515 0 0 0-39.949 104.806c0 148.743 92.139 181.875 179.961 191.61a83.898 83.898 0 0 0-25.192 51.863c-40.708 22.518-91.94 8.261-115.181-32.058a83.117 83.117 0 0 0-60.466-39.98s-38.871-.361-2.879 23.408a102.97 102.97 0 0 1 43.912 56.906s23.398 75.279 133.531 51.863v65.913c0 10.443 13.548 42.63 102.328 42.63 71.275 0 94.913-30.385 94.913-42.987V690.485a90.052 90.052 0 0 0-26.996-72.03c83.996-9.381 173.328-40.204 179.6-176.098a164.706 164.706 0 0 1-21.129 1.365c-84.07 0-152.223-63.426-152.223-141.666z" fill="#fff"/><path d="M743.554 322.765a136.267 136.267 0 0 0-3.961-102.289s-32.396-10.445-107.979 39.618a385.536 385.536 0 0 0-11.853-2.956 132.623 132.623 0 0 0-7.816 44.917c0 78.24 68.152 141.667 152.222 141.667 7.171 0 14.222-.472 21.129-1.365.231-5.03.363-10.187.363-15.509a149.534 149.534 0 0 0-42.105-104.083z" fill="#fff" opacity=".4"/></svg>
+        <div class="brand-copy"><span class="brand-name">开源好物集</span><h1>图片处理工具</h1></div>
+      </div>
+      <span class="privacy">本地处理，不上传图片</span>
+    </header>
+
+    <div class="intro">
+      <div><h2>裁剪、拼接与网格切图</h2><p>一个页面完成常用图片整理，处理结果可直接下载。</p></div>
+      <div class="tabs" role="tablist" aria-label="图片处理模式">
+        <button class="tab" id="cropTab" type="button" role="tab" aria-selected="true" aria-controls="cropPanel" tabindex="0" data-mode="crop">图片裁剪</button>
+        <button class="tab" id="joinTab" type="button" role="tab" aria-selected="false" aria-controls="joinPanel" tabindex="-1" data-mode="join">图片拼接</button>
+        <button class="tab" id="gridTab" type="button" role="tab" aria-selected="false" aria-controls="gridPanel" tabindex="-1" data-mode="grid">网格切图</button>
+      </div>
+    </div>
+
+    <div class="content-layout" id="contentLayout">
+      <aside class="resource-panel" id="resourcePanel" aria-labelledby="resourcePanelTitle">
+        <div class="resource-header">
+          <h3 id="resourcePanelTitle">相关链接</h3>
+          <button class="resource-toggle" id="resourceToggle" type="button" aria-expanded="true" aria-controls="resourceContent" aria-label="收起相关链接">
+            <svg class="resource-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+          </button>
+        </div>
+        <div id="resourceContent">
+          <p class="resource-note">了解项目、查看源码或参与共建。</p>
+          <ul class="resource-list">
+            <li>
+              <a class="resource-link" href="https://www.huima123.com" target="_blank" rel="noopener noreferrer">
+                <span class="resource-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.2 2.5 3.3 5.5 3.3 9S14.2 18.5 12 21c-2.2-2.5-3.3-5.5-3.3-9S9.8 5.5 12 3Z"/></svg></span>
+                <span class="resource-copy"><strong>公司官网</strong><span>huima123.com</span></span>
+                <span class="resource-arrow" aria-hidden="true">↗</span>
+              </a>
+            </li>
+            <li>
+              <a class="resource-link" href="https://gitee.com/HD85512b/tools" target="_blank" rel="noopener noreferrer">
+                <span class="resource-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6.5 5.5h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-10a1 1 0 0 1 1-1Z"/><path d="M9 9h6v6H9z"/></svg></span>
+                <span class="resource-copy"><strong>码云仓库</strong><span>Gitee</span></span>
+                <span class="resource-arrow" aria-hidden="true">↗</span>
+              </a>
+            </li>
+            <li>
+              <a class="resource-link" href="https://github.com/zhoudemigod/tools" target="_blank" rel="noopener noreferrer">
+                <span class="resource-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.82a9.6 9.6 0 0 1 2.5.34c1.91-1.3 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg></span>
+                <span class="resource-copy"><strong>GitHub 仓库</strong><span>查看项目源码</span></span>
+                <span class="resource-arrow" aria-hidden="true">↗</span>
+              </a>
+            </li>
+          </ul>
+          <section class="qr-section" aria-labelledby="miniProgramTitle">
+            <h4 id="miniProgramTitle">微信小程序</h4>
+            <div class="qr-placeholder" role="img" aria-label="微信小程序二维码占位符">二维码<br>占位</div>
+            <p class="qr-caption">二维码即将上线，敬请期待。</p>
+          </section>
+        </div>
+      </aside>
+
+      <div class="tool-area">
+    <section class="tool-panel" id="cropPanel" role="tabpanel" aria-labelledby="cropTab">
+      <div class="workspace">
+        <aside class="controls" aria-label="裁剪设置">
+          <h3>裁剪设置</h3>
+          <p class="section-note">选定比例后拖动裁剪框；自定义可拖动四角缩放，也可直接输入宽高。</p>
+          <div class="control-group">
+            <label class="file-picker" for="cropFile">选择一张图片<input id="cropFile" type="file" accept="image/*"></label>
+            <fieldset class="ratio-field" id="cropPreset">
+              <legend>常用裁剪尺寸</legend>
+              <div class="ratio-options">
+                <label class="ratio-option"><input type="radio" name="cropRatio" value="1080x1080" aria-label="1:1" checked><span>1:1</span></label>
+                <label class="ratio-option"><input type="radio" name="cropRatio" value="1080x1350" aria-label="4:5"><span>4:5</span></label>
+                <label class="ratio-option"><input type="radio" name="cropRatio" value="1920x1080" aria-label="16:9"><span>16:9</span></label>
+                <label class="ratio-option"><input type="radio" name="cropRatio" value="1080x1920" aria-label="9:16"><span>9:16</span></label>
+                <label class="ratio-option"><input type="radio" name="cropRatio" value="1800x1200" aria-label="3:2"><span>3:2</span></label>
+                <label class="ratio-option"><input type="radio" name="cropRatio" value="1200x1800" aria-label="2:3"><span>2:3</span></label>
+                <label class="ratio-option"><input type="radio" name="cropRatio" value="1600x1200" aria-label="4:3"><span>4:3</span></label>
+                <label class="ratio-option"><input type="radio" name="cropRatio" value="1200x1600" aria-label="3:4"><span>3:4</span></label>
+                <label class="ratio-option"><input type="radio" name="cropRatio" value="custom" aria-label="自定义"><span>自定义</span></label>
+              </div>
+            </fieldset>
+            <div class="field-row">
+              <div class="field"><label for="cropWidth">输出宽度</label><input id="cropWidth" type="number" min="1" max="8192" value="1080" inputmode="numeric"></div>
+              <div class="field"><label for="cropHeight">输出高度</label><input id="cropHeight" type="number" min="1" max="8192" value="1080" inputmode="numeric"></div>
+            </div>
+            <div class="field"><div class="range-line"><label for="cropZoom">裁剪缩放</label><output id="cropZoomValue" for="cropZoom">1.00 倍</output></div><input id="cropZoom" type="range" min="1" max="4" step=".05" value="1"></div>
+          </div>
+          <div class="control-group">
+            <div class="field"><label for="cropFormat">下载格式</label><select id="cropFormat"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select></div>
+            <div class="action-row"><button class="button" id="cropReset" type="button" disabled>居中复位</button><button class="button primary" id="cropDownload" type="button" disabled>下载裁剪图</button></div>
+            <p class="status" id="cropStatus" role="status" aria-live="polite"></p>
+          </div>
+        </aside>
+        <div class="preview-card">
+          <div class="preview-heading"><h3>裁剪预览</h3><span class="preview-meta" id="cropMeta">尚未选择图片</span></div>
+          <div class="canvas-stage">
+            <div class="empty-state" id="cropEmpty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M8 8h8v8H8z"/></svg></div><strong>选择图片开始裁剪</strong><p>支持 PNG、JPEG、WebP 等浏览器可读取的图片格式。</p></div>
+            <canvas id="cropCanvas" tabindex="0" aria-label="裁剪预览，可拖动裁剪框或使用方向键调整位置；自定义模式可拖动四角缩放" hidden></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-panel" id="joinPanel" role="tabpanel" aria-labelledby="joinTab" hidden>
+      <div class="workspace">
+        <aside class="controls" aria-label="拼接设置">
+          <h3>拼接设置</h3>
+          <p class="section-note">上传、排序或调整参数后，左侧拼接预览会自动刷新。</p>
+          <div class="control-group">
+            <label class="file-picker" for="joinFiles">添加多张图片<input id="joinFiles" type="file" accept="image/*" multiple></label>
+            <ul class="image-list" id="joinList" aria-label="待拼接图片列表"></ul>
+          </div>
+          <div class="control-group">
+            <fieldset class="field join-direction-field" id="joinDirection">
+              <legend>拼接方向</legend>
+              <div class="join-direction-options">
+                <label class="ratio-option"><input type="radio" name="joinDirection" value="horizontal" aria-label="横向拼接" checked><span>横向拼接</span></label>
+                <label class="ratio-option"><input type="radio" name="joinDirection" value="vertical" aria-label="纵向拼接"><span>纵向拼接</span></label>
+              </div>
+            </fieldset>
+            <div class="field join-size-field"><label for="joinSize">统一边长（像素）</label><input id="joinSize" type="number" min="50" max="4000" value="800"></div>
+            <div class="field-row">
+              <div class="field"><label for="joinGap">图片间距</label><input id="joinGap" type="number" min="0" max="500" value="12"></div>
+              <div class="field"><label for="joinBackground">背景颜色</label><input id="joinBackground" type="color" value="#ffffff"></div>
+            </div>
+            <div class="field"><label for="joinFormat">下载格式</label><select id="joinFormat"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select></div>
+            <div class="action-row single"><button class="button primary" id="joinDownload" type="button" disabled>下载拼接图</button></div>
+            <p class="status" id="joinStatus" role="status" aria-live="polite"></p>
+          </div>
+        </aside>
+        <div class="preview-card">
+          <div class="preview-heading"><h3>拼接预览</h3><span class="preview-meta" id="joinMeta">尚未添加图片</span></div>
+          <div class="canvas-stage">
+            <div class="empty-state" id="joinEmpty"><div class="empty-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/></svg></div><strong>添加图片后实时预览</strong><p>图片会按统一高度或宽度等比缩放，参数变化会立即显示在这里。</p></div>
+            <canvas id="joinCanvas" aria-label="拼接图片预览" hidden></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-panel" id="gridPanel" role="tabpanel" aria-labelledby="gridTab" hidden>
+      <div class="workspace">
+        <aside class="controls" aria-label="网格切图设置">
+          <h3>网格切图设置</h3>
+          <p class="section-note">上传图片、选择网格或修改行列数后，左侧切片预览会自动刷新。</p>
+          <div class="control-group">
+            <label class="file-picker" for="gridFile">选择一张图片<input id="gridFile" type="file" accept="image/*"></label>
+            <fieldset class="ratio-field" id="gridPreset">
+              <legend>常用网格</legend>
+              <div class="ratio-options grid-preset-options">
+                <label class="ratio-option"><input type="radio" name="gridPreset" value="3x3" aria-label="九宫格 3 乘 3" checked><span>3 × 3</span></label>
+                <label class="ratio-option"><input type="radio" name="gridPreset" value="2x2" aria-label="四宫格 2 乘 2"><span>2 × 2</span></label>
+                <label class="ratio-option"><input type="radio" name="gridPreset" value="3x1" aria-label="横向三切 3 乘 1"><span>3 × 1</span></label>
+                <label class="ratio-option"><input type="radio" name="gridPreset" value="1x3" aria-label="纵向三切 1 乘 3"><span>1 × 3</span></label>
+                <label class="ratio-option"><input type="radio" name="gridPreset" value="custom" aria-label="自定义网格"><span>自定义</span></label>
+              </div>
+            </fieldset>
+            <div class="field-row">
+              <div class="field"><label for="gridColumns">列数</label><input id="gridColumns" type="number" min="1" max="6" value="3"></div>
+              <div class="field"><label for="gridRows">行数</label><input id="gridRows" type="number" min="1" max="6" value="3"></div>
+            </div>
+            <div class="field"><label for="gridFormat">下载格式</label><select id="gridFormat"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select></div>
+            <div class="action-row single"><button class="button primary" id="gridDownloadAll" type="button" disabled>下载全部</button></div>
+            <p class="status" id="gridStatus" role="status" aria-live="polite"></p>
+          </div>
+        </aside>
+        <div class="preview-card">
+          <div class="preview-heading"><h3>切图预览</h3><span class="preview-meta" id="gridMeta">尚未选择图片</span></div>
+          <div class="canvas-stage grid-stage">
+            <div class="empty-state" id="gridEmpty"><div class="empty-icon"><svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></div><strong>上传图片后自动切图</strong><p>每个切片都保留原图清晰度，网格变化会实时显示在这里。</p></div>
+            <div class="tiles" id="gridTiles" aria-label="网格切图结果" hidden></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+      </div>
+
+    </div>
+
+    <footer><span>开源好物集 · 图片处理工具</span><span>无需上传 · 无需登录 · 支持离线</span></footer>
+  </main>
+
+  <script>
+    'use strict';
+
+    /** 页面中需要频繁访问的元素 ID。 */
+    const elementIds = [
+      'contentLayout', 'resourceToggle', 'resourceContent',
+      'cropTab', 'joinTab', 'gridTab', 'cropPanel', 'joinPanel', 'gridPanel',
+      'cropFile', 'cropPreset', 'cropWidth', 'cropHeight', 'cropZoom', 'cropZoomValue',
+      'cropFormat', 'cropReset', 'cropDownload', 'cropStatus', 'cropMeta', 'cropEmpty', 'cropCanvas',
+      'joinFiles', 'joinList', 'joinDirection', 'joinSize', 'joinGap', 'joinBackground',
+      'joinFormat', 'joinDownload', 'joinStatus', 'joinMeta', 'joinEmpty', 'joinCanvas',
+      'gridFile', 'gridPreset', 'gridColumns', 'gridRows', 'gridFormat',
+      'gridDownloadAll', 'gridStatus', 'gridMeta', 'gridEmpty', 'gridTiles'
+    ];
+    /** 按 ID 映射的界面元素集合，所有值均应存在。 */
+    const ui = Object.fromEntries(elementIds.map(
+    /** @param {string} id 页面元素 ID；@returns {[string,HTMLElement]} ID 与元素组成的映射项。 */
+    function mapElement(id) {
+      return [id, document.getElementById(id)];
+    }));
+    /** 三个模式按钮的固定顺序，用于键盘左右方向键切换。 */
+    const tabButtons = [ui.cropTab, ui.joinTab, ui.gridTab];
+    /** 浏览器单次画布允许的保守像素上限，避免生成超大图导致页面失去响应。 */
+    const MAX_CANVAS_PIXELS = 64000000;
+    /** 浏览器画布单边的保守尺寸上限。 */
+    const MAX_CANVAS_EDGE = 16384;
+    /** 自定义裁剪输出输入框允许的最大单边像素。 */
+    const MAX_CROP_OUTPUT_EDGE = 8192;
+    /** 自定义裁剪角点的可点击半径，单位 CSS 像素。 */
+    const CROP_HANDLE_HIT_RADIUS = 18;
+    /** 自定义裁剪框的最小显示边长，单位 CSS 像素。 */
+    const CROP_MIN_DISPLAY_SIZE = 48;
+    /** 四个裁剪角点对应的鼠标指针样式。 */
+    const CROP_HANDLE_CURSORS = { nw: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', se: 'nwse-resize' };
+    /** 裁剪、拼接和网格切图的运行状态。 */
+    const state = {
+      /** 当前选中的工具模式。 */
+      mode: 'crop',
+      /** 裁剪模式的图片、选区和拖动信息。 */
+      crop: {
+        /** 当前加载的裁剪图片资源，可为空。 */
+        asset: null,
+        /** 当前裁剪框在源图片中的坐标与尺寸，可为空。 */
+        rect: null,
+        /** 源图片到预览画布的缩放比例。 */
+        previewScale: 1,
+        /** 指针是否正在移动或缩放裁剪框。 */
+        dragging: false,
+        /** 当前拖动模式：move、nw、ne、sw、se 或空。 */
+        dragMode: null,
+        /** 本次拖动起点的源图片横坐标。 */
+        startX: 0,
+        /** 本次拖动起点的源图片纵坐标。 */
+        startY: 0,
+        /** 本次拖动开始时裁剪框的横坐标。 */
+        originX: 0,
+        /** 本次拖动开始时裁剪框的纵坐标。 */
+        originY: 0,
+        /** 本次拖动开始时裁剪框的宽度。 */
+        originWidth: 0,
+        /** 本次拖动开始时裁剪框的高度。 */
+        originHeight: 0
+      },
+      /** 拼接模式的图片队列和实时预览状态。 */
+      join: {
+        /** 按当前顺序参与拼接的图片资源。 */
+        assets: [],
+        /** 当前画布是否包含可下载的最新预览。 */
+        generated: false,
+        /** 已排队的实时预览动画帧编号，0 表示无待处理任务。 */
+        previewFrame: 0
+      },
+      /** 网格切图模式的源图片、切片和实时预览状态。 */
+      grid: {
+        /** 当前加载的网格切图源图片，可为空。 */
+        asset: null,
+        /** 按行列顺序保存的最新切片画布。 */
+        tiles: [],
+        /** 已排队的实时切图动画帧编号，0 表示无待处理任务。 */
+        previewFrame: 0
+      }
+    };
+
+    /**
+     * 在指定状态区域显示成功或错误消息。
+     * @param {HTMLElement} target 预先存在的状态区域
+     * @param {string} message 需要向用户展示的消息
+     * @param {boolean} isError 是否使用错误颜色
+     * @returns {void}
+     */
+    function setStatus(target, message, isError) {
+      // 1. 更新文字：状态区域始终保留在 DOM 中，方便辅助技术监听。
+      target.textContent = message;
+      // 2. 更新语义化视觉状态：错误同时使用文字说明，不只依靠颜色。
+      target.classList.toggle('error', Boolean(isError));
+    }
+
+    /**
+     * 将数字限制在指定闭区间内。
+     * @param {number} value 待限制的数值
+     * @param {number} minimum 最小允许值
+     * @param {number} maximum 最大允许值
+     * @returns {number} 区间内的数值
+     */
+    function clamp(value, minimum, maximum) {
+      return Math.min(maximum, Math.max(minimum, value));
+    }
+
+    /**
+     * 加载一个本地图片文件并返回浏览器内存对象。
+     * @param {File} file 用户选择的本地图片文件
+     * @returns {Promise<object>} 含文件名、URL、宽高和图片节点的资源对象
+     */
+    async function loadAsset(file) {
+      // 1. 校验类型：非图片文件不会进入解码流程。
+      if (!file || !file.type.startsWith('image/')) {
+        throw new Error('请选择浏览器支持的图片文件。');
+      }
+      /** 仅在当前页面内有效的图片地址。 */
+      const url = URL.createObjectURL(file);
+      /** 用于解码并读取原始尺寸的图片节点。 */
+      const image = new Image();
+      try {
+        // 2. 解码图片：确认文件可正常显示后再交给各工具使用。
+        image.src = url;
+        await image.decode();
+        return { file: file, name: file.name, url: url, image: image, width: image.naturalWidth, height: image.naturalHeight };
+      } catch (error) {
+        URL.revokeObjectURL(url);
+        throw new Error('图片无法读取，请尝试其他文件。');
+      }
+    }
+
+    /**
+     * 释放图片占用的浏览器对象地址。
+     * @param {object|null} asset 待释放的图片资源，可为空
+     * @returns {void}
+     */
+    function releaseAsset(asset) {
+      if (asset && asset.url) URL.revokeObjectURL(asset.url);
+    }
+
+    /**
+     * 检查输出画布尺寸是否处于安全范围。
+     * @param {number} width 输出宽度，单位像素
+     * @param {number} height 输出高度，单位像素
+     * @throws {Error} 尺寸非法或过大时抛出
+     * @returns {void}
+     */
+    function validateCanvasSize(width, height) {
+      // 1. 基础校验：宽高必须为有限正整数。
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) {
+        throw new Error('输出尺寸必须大于 0。');
+      }
+      // 2. 容量校验：限制单边与总像素，降低浏览器崩溃风险。
+      if (width > MAX_CANVAS_EDGE || height > MAX_CANVAS_EDGE || width * height > MAX_CANVAS_PIXELS) {
+        throw new Error('输出尺寸过大，请减小宽高或统一边长。');
+      }
+    }
+
+    /**
+     * 根据 MIME 类型返回下载文件扩展名。
+     * @param {string} mimeType 图片 MIME 类型
+     * @returns {string} 不含点号的扩展名
+     */
+    function extensionFor(mimeType) {
+      if (mimeType === 'image/jpeg') return 'jpg';
+      if (mimeType === 'image/webp') return 'webp';
+      return 'png';
+    }
+
+    /**
+     * 将画布编码并触发本地下载。
+     * @param {HTMLCanvasElement} canvas 待下载的画布
+     * @param {string} baseName 不含扩展名的文件名
+     * @param {string} mimeType 下载图片格式
+     * @returns {Promise<void>}
+     */
+    function downloadCanvas(canvas, baseName, mimeType) {
+      return new Promise(
+      /** @param {Function} resolve 下载成功回调；@param {Function} reject 下载失败回调；@returns {void} */
+      function encodeCanvas(resolve, reject) {
+        // 1. 编码图片：JPEG 与 WebP 使用较高质量，PNG 忽略质量参数。
+        canvas.toBlob(
+        /** @param {Blob|null} blob 浏览器生成的图片数据；@returns {void} */
+        function handleBlob(blob) {
+          if (!blob) {
+            reject(new Error('浏览器无法生成该格式，请改用 PNG。'));
+            return;
+          }
+          /** 下载文件对应的临时地址。 */
+          const url = URL.createObjectURL(blob);
+          /** 触发浏览器保存文件的临时链接。 */
+          const link = document.createElement('a');
+          // 2. 触发下载：文件交给浏览器后立即释放临时地址。
+          link.href = url;
+          link.download = baseName + '.' + extensionFor(mimeType);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+          resolve();
+        }, mimeType, .92);
+      });
+    }
+
+    /**
+     * 激活指定工具模式并同步选项卡状态。
+     * @param {string} mode crop、join 或 grid
+     * @param {boolean} moveFocus 是否把键盘焦点移到新选项卡
+     * @returns {void}
+     */
+    function activateMode(mode, moveFocus) {
+      // 1. 更新选项卡：可见状态、焦点顺序和 aria-selected 保持一致。
+      state.mode = mode;
+      tabButtons.forEach(
+      /** @param {HTMLButtonElement} button 当前模式按钮；@returns {void} */
+      function updateTab(button) {
+        /** 当前按钮是否对应新模式。 */
+        const active = button.dataset.mode === mode;
+        button.setAttribute('aria-selected', String(active));
+        button.tabIndex = active ? 0 : -1;
+        if (active && moveFocus) button.focus();
+      });
+      // 2. 更新面板：只保留当前模式内容参与阅读和键盘导航。
+      ui.cropPanel.hidden = mode !== 'crop';
+      ui.joinPanel.hidden = mode !== 'join';
+      ui.gridPanel.hidden = mode !== 'grid';
+    }
+
+    /**
+     * 处理选项卡点击。
+     * @param {MouseEvent} event 选项卡点击事件
+     * @returns {void}
+     */
+    function handleTabClick(event) {
+      /** 被用户选择的模式。 */
+      const mode = event.currentTarget.dataset.mode;
+      activateMode(mode, false);
+    }
+
+    /**
+     * 使用方向键、Home 和 End 在选项卡之间移动。
+     * @param {KeyboardEvent} event 选项卡键盘事件
+     * @returns {void}
+     */
+    function handleTabKeydown(event) {
+      /** 当前选项卡的索引。 */
+      const currentIndex = tabButtons.indexOf(event.currentTarget);
+      /** 根据按键计算的新索引，默认保持不变。 */
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabButtons.length;
+      else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabButtons.length) % tabButtons.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = tabButtons.length - 1;
+      else return;
+      event.preventDefault();
+      activateMode(tabButtons[nextIndex].dataset.mode, true);
+    }
+
+    /**
+     * 读取并校验裁剪输出尺寸。
+     * @returns {{width:number,height:number}} 裁剪输出宽高
+     */
+    function readCropSize() {
+      /** 用户输入的输出宽度。 */
+      const width = Math.round(Number(ui.cropWidth.value));
+      /** 用户输入的输出高度。 */
+      const height = Math.round(Number(ui.cropHeight.value));
+      validateCanvasSize(width, height);
+      return { width: width, height: height };
+    }
+
+    /**
+     * 根据目标比例和缩放值重建裁剪框。
+     * @param {boolean} preserveCenter 是否以当前裁剪框中心为基准
+     * @returns {void}
+     */
+    function resetCropRect(preserveCenter) {
+      if (!state.crop.asset) return;
+      /** 当前裁剪输出尺寸。 */
+      const size = readCropSize();
+      /** 目标宽高比。 */
+      const ratio = size.width / size.height;
+      /** 源图片宽度。 */
+      const imageWidth = state.crop.asset.width;
+      /** 源图片高度。 */
+      const imageHeight = state.crop.asset.height;
+      /** 当前缩放倍数，数值越大选取范围越小。 */
+      const zoom = Number(ui.cropZoom.value);
+      /** 在源图片内可容纳的最大裁剪宽度。 */
+      const maximumWidth = imageWidth / imageHeight > ratio ? imageHeight * ratio : imageWidth;
+      /** 在源图片内可容纳的最大裁剪高度。 */
+      const maximumHeight = maximumWidth / ratio;
+      /** 缩放后的裁剪宽度。 */
+      const width = maximumWidth / zoom;
+      /** 缩放后的裁剪高度。 */
+      const height = maximumHeight / zoom;
+      /** 重置前的裁剪框中心横坐标。 */
+      const previousCenterX = state.crop.rect ? state.crop.rect.x + state.crop.rect.width / 2 : imageWidth / 2;
+      /** 重置前的裁剪框中心纵坐标。 */
+      const previousCenterY = state.crop.rect ? state.crop.rect.y + state.crop.rect.height / 2 : imageHeight / 2;
+      /** 新裁剪框的目标中心横坐标。 */
+      const centerX = preserveCenter ? previousCenterX : imageWidth / 2;
+      /** 新裁剪框的目标中心纵坐标。 */
+      const centerY = preserveCenter ? previousCenterY : imageHeight / 2;
+      // 1. 重建选区：维持目标比例，并将范围限制在图片边界内。
+      state.crop.rect = {
+        x: clamp(centerX - width / 2, 0, imageWidth - width),
+        y: clamp(centerY - height / 2, 0, imageHeight - height),
+        width: width,
+        height: height
+      };
+      // 2. 同步界面：预览和缩放文字立即反映新选区。
+      ui.cropZoomValue.value = Number(zoom).toFixed(2) + ' 倍';
+      renderCropPreview();
+    }
+
+    /**
+     * 在预览画布上绘制原图、遮罩、网格线和裁剪边框。
+     * @returns {void}
+     */
+    function renderCropPreview() {
+      if (!state.crop.asset || !state.crop.rect) return;
+      /** 裁剪预览画布的绘图上下文。 */
+      const context = ui.cropCanvas.getContext('2d');
+      /** 将源图限制在适合预览的最大宽度内。 */
+      const widthScale = Math.min(1, 1100 / state.crop.asset.width);
+      /** 将源图限制在适合预览的最大高度内。 */
+      const heightScale = Math.min(1, 700 / state.crop.asset.height);
+      /** 源图到预览画布的统一缩放比例。 */
+      const scale = Math.min(widthScale, heightScale);
+      /** 预览画布宽度。 */
+      const canvasWidth = Math.max(1, Math.round(state.crop.asset.width * scale));
+      /** 预览画布高度。 */
+      const canvasHeight = Math.max(1, Math.round(state.crop.asset.height * scale));
+      /** 裁剪框在预览画布中的横坐标。 */
+      const cropX = state.crop.rect.x * scale;
+      /** 裁剪框在预览画布中的纵坐标。 */
+      const cropY = state.crop.rect.y * scale;
+      /** 裁剪框在预览画布中的宽度。 */
+      const cropWidth = state.crop.rect.width * scale;
+      /** 裁剪框在预览画布中的高度。 */
+      const cropHeight = state.crop.rect.height * scale;
+      // 1. 绘制源图：保存预览比例供鼠标与触控坐标换算。
+      ui.cropCanvas.width = canvasWidth;
+      ui.cropCanvas.height = canvasHeight;
+      state.crop.previewScale = scale;
+      context.clearRect(0, 0, canvasWidth, canvasHeight);
+      context.drawImage(state.crop.asset.image, 0, 0, canvasWidth, canvasHeight);
+      // 2. 绘制遮罩：仅保留当前裁剪区域明亮可见。
+      context.fillStyle = 'rgba(18, 28, 23, .56)';
+      context.fillRect(0, 0, canvasWidth, cropY);
+      context.fillRect(0, cropY + cropHeight, canvasWidth, canvasHeight - cropY - cropHeight);
+      context.fillRect(0, cropY, cropX, cropHeight);
+      context.fillRect(cropX + cropWidth, cropY, canvasWidth - cropX - cropWidth, cropHeight);
+      // 3. 绘制参考线：三分网格和清晰边框帮助用户对齐主体。
+      context.strokeStyle = 'rgba(255,255,255,.66)';
+      context.lineWidth = 1;
+      for (let index = 1; index < 3; index += 1) {
+        context.beginPath();
+        context.moveTo(cropX + cropWidth * index / 3, cropY);
+        context.lineTo(cropX + cropWidth * index / 3, cropY + cropHeight);
+        context.moveTo(cropX, cropY + cropHeight * index / 3);
+        context.lineTo(cropX + cropWidth, cropY + cropHeight * index / 3);
+        context.stroke();
+      }
+      context.strokeStyle = '#ffffff';
+      context.lineWidth = 3;
+      context.strokeRect(cropX + 1.5, cropY + 1.5, Math.max(0, cropWidth - 3), Math.max(0, cropHeight - 3));
+      // 4. 绘制缩放角点：仅自定义模式显示，固定视觉尺寸便于鼠标和触控命中。
+      if (isCustomCropMode()) {
+        /** 画布像素相对 CSS 像素的缩放比例。 */
+        const canvasDisplayScale = ui.cropCanvas.width / Math.max(1, ui.cropCanvas.getBoundingClientRect().width);
+        /** 每个角点在画布中的边长。 */
+        const handleSize = 12 * canvasDisplayScale;
+        /** 四个角点在预览画布中的位置。 */
+        const handleCorners = [
+          { x: cropX, y: cropY },
+          { x: cropX + cropWidth, y: cropY },
+          { x: cropX, y: cropY + cropHeight },
+          { x: cropX + cropWidth, y: cropY + cropHeight }
+        ];
+        context.fillStyle = '#34765a';
+        context.strokeStyle = '#ffffff';
+        context.lineWidth = 2 * canvasDisplayScale;
+        for (const corner of handleCorners) {
+          context.fillRect(corner.x - handleSize / 2, corner.y - handleSize / 2, handleSize, handleSize);
+          context.strokeRect(corner.x - handleSize / 2, corner.y - handleSize / 2, handleSize, handleSize);
+        }
+      }
+      ui.cropCanvas.style.cursor = 'move';
+    }
+
+    /**
+     * 将指针位置换算为源图片坐标。
+     * @param {PointerEvent} event 画布指针事件
+     * @returns {{x:number,y:number}} 源图片坐标
+     */
+    function cropSourcePoint(event) {
+      /** 画布在页面中的显示边界。 */
+      const bounds = ui.cropCanvas.getBoundingClientRect();
+      /** 显示尺寸到画布像素的横向换算比例。 */
+      const displayScaleX = ui.cropCanvas.width / bounds.width;
+      /** 显示尺寸到画布像素的纵向换算比例。 */
+      const displayScaleY = ui.cropCanvas.height / bounds.height;
+      return {
+        x: (event.clientX - bounds.left) * displayScaleX / state.crop.previewScale,
+        y: (event.clientY - bounds.top) * displayScaleY / state.crop.previewScale
+      };
+    }
+
+    /**
+     * 判断当前是否选中了可自由缩放的自定义比例。
+     * @returns {boolean} 自定义比例被选中时返回 true
+     */
+    function isCustomCropMode() {
+      return Boolean(ui.cropPreset.querySelector('input[value="custom"]:checked'));
+    }
+
+    /**
+     * 计算一个 CSS 像素对应的源图片坐标单位。
+     * @returns {number} 每个 CSS 像素对应的源图片像素数
+     */
+    function cropSourceUnitsPerCssPixel() {
+      /** 预览画布当前显示边界。 */
+      const bounds = ui.cropCanvas.getBoundingClientRect();
+      return ui.cropCanvas.width / Math.max(1, bounds.width) / state.crop.previewScale;
+    }
+
+    /**
+     * 查找指针命中的自定义裁剪角点。
+     * @param {{x:number,y:number}} point 指针在源图片中的坐标
+     * @returns {string|null} nw、ne、sw、se 或未命中时的 null
+     */
+    function findCropResizeHandle(point) {
+      if (!isCustomCropMode() || !state.crop.rect) return null;
+      /** 当前裁剪框。 */
+      const rect = state.crop.rect;
+      /** 角点的源图片坐标命中半径。 */
+      const hitRadius = CROP_HANDLE_HIT_RADIUS * cropSourceUnitsPerCssPixel();
+      /** 四个可缩放角点及其源图片坐标。 */
+      const handles = [
+        { name: 'nw', x: rect.x, y: rect.y },
+        { name: 'ne', x: rect.x + rect.width, y: rect.y },
+        { name: 'sw', x: rect.x, y: rect.y + rect.height },
+        { name: 'se', x: rect.x + rect.width, y: rect.y + rect.height }
+      ];
+      // 1. 逐个检查角点：方形命中区对鼠标和触控都更容易操作。
+      for (const handle of handles) {
+        if (Math.abs(point.x - handle.x) <= hitRadius && Math.abs(point.y - handle.y) <= hitRadius) return handle.name;
+      }
+      return null;
+    }
+
+    /**
+     * 将自定义裁剪框比例同步到输出宽高，并限制在安全画布范围内。
+     * @returns {void}
+     */
+    function syncCustomCropOutputSize() {
+      if (!state.crop.rect) return;
+      /** 裁剪框原始宽度，至少为 1 像素。 */
+      const sourceWidth = Math.max(1, Math.round(state.crop.rect.width));
+      /** 裁剪框原始高度，至少为 1 像素。 */
+      const sourceHeight = Math.max(1, Math.round(state.crop.rect.height));
+      /** 同时满足输入框单边和画布总像素限制的缩放比例。 */
+      const normalizationScale = Math.min(
+        1,
+        MAX_CROP_OUTPUT_EDGE / sourceWidth,
+        MAX_CROP_OUTPUT_EDGE / sourceHeight,
+        Math.sqrt(MAX_CANVAS_PIXELS / (sourceWidth * sourceHeight))
+      );
+      /** 写回输入框的安全输出宽度。 */
+      const outputWidth = Math.max(1, Math.round(sourceWidth * normalizationScale));
+      /** 写回输入框的安全输出高度。 */
+      const outputHeight = Math.max(1, Math.round(sourceHeight * normalizationScale));
+      // 1. 同步尺寸：导出比例始终与自由拖拽后的裁剪框一致，避免图片被拉伸。
+      ui.cropWidth.value = String(outputWidth);
+      ui.cropHeight.value = String(outputHeight);
+    }
+
+    /**
+     * 按当前活动角点自由缩放自定义裁剪框。
+     * @param {{x:number,y:number}} point 当前指针在源图片中的坐标
+     * @returns {void}
+     */
+    function resizeCustomCropRect(point) {
+      if (!state.crop.asset || !state.crop.rect || !state.crop.dragMode || state.crop.dragMode === 'move') return;
+      /** 横向拖动方向：左侧角点为 -1，右侧角点为 1。 */
+      const horizontalDirection = state.crop.dragMode.includes('w') ? -1 : 1;
+      /** 纵向拖动方向：顶部角点为 -1，底部角点为 1。 */
+      const verticalDirection = state.crop.dragMode.includes('n') ? -1 : 1;
+      /** 与活动角点相对的固定横坐标。 */
+      const anchorX = horizontalDirection < 0 ? state.crop.originX + state.crop.originWidth : state.crop.originX;
+      /** 与活动角点相对的固定纵坐标。 */
+      const anchorY = verticalDirection < 0 ? state.crop.originY + state.crop.originHeight : state.crop.originY;
+      /** 裁剪框允许的最小源图片宽度。 */
+      const minimumWidth = Math.min(state.crop.asset.width, CROP_MIN_DISPLAY_SIZE * cropSourceUnitsPerCssPixel());
+      /** 裁剪框允许的最小源图片高度。 */
+      const minimumHeight = Math.min(state.crop.asset.height, CROP_MIN_DISPLAY_SIZE * cropSourceUnitsPerCssPixel());
+      /** 被拖动角点的受限横坐标。 */
+      const movingX = horizontalDirection < 0
+        ? clamp(point.x, 0, anchorX - minimumWidth)
+        : clamp(point.x, anchorX + minimumWidth, state.crop.asset.width);
+      /** 被拖动角点的受限纵坐标。 */
+      const movingY = verticalDirection < 0
+        ? clamp(point.y, 0, anchorY - minimumHeight)
+        : clamp(point.y, anchorY + minimumHeight, state.crop.asset.height);
+      // 1. 更新选区：对角锚点固定，活动角点可独立改变宽高。
+      state.crop.rect.x = Math.min(anchorX, movingX);
+      state.crop.rect.y = Math.min(anchorY, movingY);
+      state.crop.rect.width = Math.abs(movingX - anchorX);
+      state.crop.rect.height = Math.abs(movingY - anchorY);
+      // 2. 同步输出：右侧宽高立即反映新的自由比例。
+      syncCustomCropOutputSize();
+    }
+
+    /**
+     * 开始拖动裁剪框。
+     * @param {PointerEvent} event 画布指针按下事件
+     * @returns {void}
+     */
+    function handleCropPointerDown(event) {
+      if (!state.crop.rect) return;
+      /** 指针在源图片中的坐标。 */
+      const point = cropSourcePoint(event);
+      /** 当前裁剪框。 */
+      const rect = state.crop.rect;
+      /** 自定义模式下被命中的缩放角点。 */
+      const resizeHandle = findCropResizeHandle(point);
+      /** 指针是否位于裁剪框内部。 */
+      const insideRect = point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
+      // 1. 命中测试：角点优先缩放，框体内部用于移动，其他区域不响应。
+      if (!resizeHandle && !insideRect) return;
+      // 2. 保存交互起点：后续变化相对原始选区计算，避免累计误差。
+      state.crop.dragging = true;
+      state.crop.dragMode = resizeHandle || 'move';
+      state.crop.startX = point.x;
+      state.crop.startY = point.y;
+      state.crop.originX = rect.x;
+      state.crop.originY = rect.y;
+      state.crop.originWidth = rect.width;
+      state.crop.originHeight = rect.height;
+      ui.cropCanvas.style.cursor = resizeHandle ? CROP_HANDLE_CURSORS[resizeHandle] : 'move';
+      ui.cropCanvas.setPointerCapture(event.pointerId);
+    }
+
+    /**
+     * 拖动裁剪框并限制在图片边界内。
+     * @param {PointerEvent} event 画布指针移动事件
+     * @returns {void}
+     */
+    function handleCropPointerMove(event) {
+      if (!state.crop.asset || !state.crop.rect) return;
+      /** 当前指针对应的源图片坐标。 */
+      const point = cropSourcePoint(event);
+      // 1. 更新悬停反馈：未拖动时根据角点或框体切换指针样式。
+      if (!state.crop.dragging) {
+        /** 当前悬停位置命中的缩放角点。 */
+        const hoverHandle = findCropResizeHandle(point);
+        /** 当前悬停位置是否位于裁剪框内。 */
+        const insideRect = point.x >= state.crop.rect.x && point.x <= state.crop.rect.x + state.crop.rect.width
+          && point.y >= state.crop.rect.y && point.y <= state.crop.rect.y + state.crop.rect.height;
+        ui.cropCanvas.style.cursor = hoverHandle ? CROP_HANDLE_CURSORS[hoverHandle] : insideRect ? 'move' : 'default';
+        return;
+      }
+      // 2. 更新选区：框体拖动改变位置，角点拖动自由改变宽高。
+      if (state.crop.dragMode === 'move') {
+        /** 指针相对拖动起点的横向变化。 */
+        const deltaX = point.x - state.crop.startX;
+        /** 指针相对拖动起点的纵向变化。 */
+        const deltaY = point.y - state.crop.startY;
+        state.crop.rect.x = clamp(state.crop.originX + deltaX, 0, state.crop.asset.width - state.crop.rect.width);
+        state.crop.rect.y = clamp(state.crop.originY + deltaY, 0, state.crop.asset.height - state.crop.rect.height);
+      } else {
+        resizeCustomCropRect(point);
+      }
+      // 3. 重绘预览：拖动过程中持续给出视觉反馈。
+      renderCropPreview();
+    }
+
+    /**
+     * 结束裁剪框拖动。
+     * @returns {void}
+     */
+    function handleCropPointerUp() {
+      /** 本次结束的移动或缩放模式。 */
+      const completedMode = state.crop.dragMode;
+      // 1. 结束交互：清除拖动状态并恢复框体指针。
+      state.crop.dragging = false;
+      state.crop.dragMode = null;
+      ui.cropCanvas.style.cursor = 'move';
+      // 2. 反馈结果：自定义缩放结束后告知新的输出尺寸。
+      if (completedMode && completedMode !== 'move' && isCustomCropMode()) {
+        setStatus(ui.cropStatus, '自定义选区已调整为 ' + ui.cropWidth.value + ' × ' + ui.cropHeight.value + '。', false);
+      }
+    }
+
+    /**
+     * 使用方向键移动裁剪框，为拖动操作提供键盘替代方案。
+     * @param {KeyboardEvent} event 画布键盘事件
+     * @returns {void}
+     */
+    function handleCropKeydown(event) {
+      if (!state.crop.asset || !state.crop.rect || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+      event.preventDefault();
+      /** 普通按键移动约 1%，按住 Shift 时移动约 5%。 */
+      const step = Math.max(1, state.crop.rect.width * (event.shiftKey ? .05 : .01));
+      /** 水平方向变化。 */
+      const horizontal = event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0;
+      /** 垂直方向变化。 */
+      const vertical = event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0;
+      // 1. 移动选区：键盘操作与指针拖动使用相同边界规则。
+      state.crop.rect.x = clamp(state.crop.rect.x + horizontal, 0, state.crop.asset.width - state.crop.rect.width);
+      state.crop.rect.y = clamp(state.crop.rect.y + vertical, 0, state.crop.asset.height - state.crop.rect.height);
+      // 2. 更新预览：焦点保持在画布上，方便连续微调。
+      renderCropPreview();
+    }
+
+    /**
+     * 加载裁剪图片并初始化居中选区。
+     * @param {Event} event 文件输入变更事件
+     * @returns {Promise<void>}
+     */
+    async function handleCropFile(event) {
+      /** 用户本次选择的第一张图片。 */
+      const file = event.target.files[0];
+      if (!file) return;
+      setStatus(ui.cropStatus, '正在读取图片…', false);
+      try {
+        /** 成功解码的新裁剪资源。 */
+        const asset = await loadAsset(file);
+        // 1. 替换资源：释放旧图片后显示新的预览画布。
+        releaseAsset(state.crop.asset);
+        state.crop.asset = asset;
+        ui.cropEmpty.hidden = true;
+        ui.cropCanvas.hidden = false;
+        ui.cropReset.disabled = false;
+        ui.cropDownload.disabled = false;
+        ui.cropMeta.textContent = asset.name + ' · ' + asset.width + ' × ' + asset.height;
+        // 2. 初始化选区：重置缩放并按当前输出比例居中裁剪。
+        ui.cropZoom.value = '1';
+        resetCropRect(false);
+        /** 根据当前比例模式显示的操作提示。 */
+        const readyMessage = isCustomCropMode()
+          ? '图片已就绪，可拖动框体移动，拖动四角自由缩放。'
+          : '图片已就绪，可拖动裁剪框调整位置。';
+        setStatus(ui.cropStatus, readyMessage, false);
+      } catch (error) {
+        setStatus(ui.cropStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 应用裁剪尺寸预设。
+     * @param {Event} event 比例单选框的变更事件
+     * @returns {void}
+     */
+    function handleCropPreset(event) {
+      // 1. 确认来源：字段组内只有比例单选框会触发尺寸更新。
+      if (!(event.target instanceof HTMLInputElement) || event.target.name !== 'cropRatio') return;
+      /** 用户本次选中的比例或自定义标记。 */
+      const selectedValue = event.target.value;
+      // 2. 应用预设：自定义选项保留当前宽高，其他选项写入推荐像素尺寸。
+      if (selectedValue !== 'custom') {
+        /** 预设中的宽高字符串。 */
+        const parts = selectedValue.split('x');
+        ui.cropWidth.value = parts[0];
+        ui.cropHeight.value = parts[1];
+      }
+      // 3. 刷新裁剪框：新比例立即反映到预览并清除旧状态消息。
+      try {
+        resetCropRect(true);
+        setStatus(ui.cropStatus, selectedValue === 'custom' ? '拖动裁剪框四角可自由调整宽高。' : '', false);
+      } catch (error) {
+        setStatus(ui.cropStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 处理自定义裁剪宽高变化。
+     * @returns {void}
+     */
+    function handleCropDimension() {
+      /** 自定义比例单选框，手动修改宽高时自动选中。 */
+      const customOption = ui.cropPreset.querySelector('input[value="custom"]');
+      // 1. 同步选项：手动输入意味着用户已离开固定比例预设。
+      customOption.checked = true;
+      // 2. 刷新裁剪框：按新宽高重新计算可用选区。
+      try {
+        resetCropRect(true);
+        setStatus(ui.cropStatus, '', false);
+      } catch (error) {
+        setStatus(ui.cropStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 用户开始手动编辑宽高时立即切换到自定义比例。
+     * @returns {void}
+     */
+    function markCropDimensionCustom() {
+      /** 自定义比例单选框，输入过程开始后立即选中。 */
+      const customOption = ui.cropPreset.querySelector('input[value="custom"]');
+      // 1. 同步比例：输入宽高即进入自由裁剪模式。
+      customOption.checked = true;
+      // 2. 更新预览：已加载图片时立即显示四个缩放角点。
+      if (state.crop.asset && state.crop.rect) renderCropPreview();
+    }
+
+    /**
+     * 处理裁剪缩放变化，并把输入错误显示在状态区域。
+     * @returns {void}
+     */
+    function handleCropZoom() {
+      try {
+        resetCropRect(true);
+        setStatus(ui.cropStatus, '', false);
+      } catch (error) {
+        setStatus(ui.cropStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 将裁剪框恢复到图片中心。
+     * @returns {void}
+     */
+    function centerCropRect() {
+      try {
+        resetCropRect(false);
+        setStatus(ui.cropStatus, '裁剪框已居中。', false);
+      } catch (error) {
+        setStatus(ui.cropStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 导出当前裁剪区域。
+     * @returns {Promise<void>}
+     */
+    async function exportCrop() {
+      if (!state.crop.asset || !state.crop.rect) return;
+      try {
+        /** 已验证的裁剪输出尺寸。 */
+        const size = readCropSize();
+        /** 保存裁剪结果的离屏画布。 */
+        const output = document.createElement('canvas');
+        /** 离屏画布绘图上下文。 */
+        const context = output.getContext('2d');
+        // 1. 绘制裁剪结果：源选区按用户指定尺寸输出。
+        output.width = size.width;
+        output.height = size.height;
+        context.drawImage(state.crop.asset.image, state.crop.rect.x, state.crop.rect.y, state.crop.rect.width, state.crop.rect.height, 0, 0, size.width, size.height);
+        // 2. 下载文件：格式由用户设置决定。
+        await downloadCanvas(output, 'cropped-image', ui.cropFormat.value);
+        setStatus(ui.cropStatus, '裁剪图片已生成。', false);
+      } catch (error) {
+        setStatus(ui.cropStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 加载并追加拼接图片。
+     * @param {Event} event 多文件输入变更事件
+     * @returns {Promise<void>}
+     */
+    async function handleJoinFiles(event) {
+      /** 本次选择的图片文件列表。 */
+      const files = Array.from(event.target.files);
+      if (!files.length) return;
+      setStatus(ui.joinStatus, '正在读取 ' + files.length + ' 张图片…', false);
+      try {
+        /** 本次成功解码的图片资源。 */
+        const assets = await Promise.all(files.map(loadAsset));
+        // 1. 追加图片：保留之前队列并允许继续添加。
+        state.join.assets.push.apply(state.join.assets, assets);
+        // 2. 刷新列表和预览：上传完成后不再等待手动生成。
+        renderJoinList();
+        event.target.value = '';
+        refreshJoinPreview('已添加 ' + assets.length + ' 张图片，预览已自动更新。');
+      } catch (error) {
+        setStatus(ui.joinStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 渲染待拼接图片列表和排序按钮。
+     * @returns {void}
+     */
+    function renderJoinList() {
+      // 1. 清空旧列表：重新构建可确保按钮索引与当前顺序一致。
+      ui.joinList.replaceChildren();
+      // 2. 构建每行：缩略图、文件信息和三个操作按钮均提供可访问名称。
+      state.join.assets.forEach(
+      /** @param {object} asset 当前图片资源；@param {number} index 队列索引；@returns {void} */
+      function renderAsset(asset, index) {
+        /** 图片列表项。 */
+        const item = document.createElement('li');
+        /** 装饰性图片缩略图。 */
+        const thumbnail = document.createElement('img');
+        /** 图片名称与尺寸容器。 */
+        const info = document.createElement('div');
+        /** 图片名称。 */
+        const name = document.createElement('strong');
+        /** 图片尺寸。 */
+        const size = document.createElement('span');
+        /** 排序与删除按钮容器。 */
+        const actions = document.createElement('div');
+        item.className = 'image-item';
+        thumbnail.src = asset.url;
+        thumbnail.alt = '';
+        info.className = 'image-info';
+        name.textContent = asset.name;
+        size.textContent = asset.width + ' × ' + asset.height;
+        info.append(name, size);
+        actions.className = 'item-actions';
+        ['up', 'down', 'remove'].forEach(
+        /** @param {string} action 列表操作名称；@returns {void} */
+        function createAction(action) {
+          /** 当前列表操作按钮。 */
+          const button = document.createElement('button');
+          /** 三种操作对应的可见图标。 */
+          const icon = action === 'up' ? '↑' : action === 'down' ? '↓' : '×';
+          /** 三种操作对应的中文名称。 */
+          const label = action === 'up' ? '上移' : action === 'down' ? '下移' : '移除';
+          button.type = 'button';
+          button.className = 'icon-button';
+          button.dataset.action = action;
+          button.dataset.index = String(index);
+          button.textContent = icon;
+          button.setAttribute('aria-label', label + ' ' + asset.name);
+          button.disabled = action === 'up' && index === 0 || action === 'down' && index === state.join.assets.length - 1;
+          actions.appendChild(button);
+        });
+        item.append(thumbnail, info, actions);
+        ui.joinList.appendChild(item);
+      });
+    }
+
+    /**
+     * 处理拼接列表中的排序和删除操作。
+     * @param {MouseEvent} event 列表点击事件
+     * @returns {void}
+     */
+    function handleJoinListClick(event) {
+      /** 用户点击的最近按钮。 */
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+      /** 操作对应的图片索引。 */
+      const index = Number(button.dataset.index);
+      /** 用户选择的列表操作。 */
+      const action = button.dataset.action;
+      // 1. 修改队列：上移、下移或释放并移除图片。
+      if (action === 'up' && index > 0) {
+        [state.join.assets[index - 1], state.join.assets[index]] = [state.join.assets[index], state.join.assets[index - 1]];
+      } else if (action === 'down' && index < state.join.assets.length - 1) {
+        [state.join.assets[index + 1], state.join.assets[index]] = [state.join.assets[index], state.join.assets[index + 1]];
+      } else if (action === 'remove') {
+        releaseAsset(state.join.assets[index]);
+        state.join.assets.splice(index, 1);
+      }
+      // 2. 同步界面：队列变化后立即重绘左侧预览。
+      renderJoinList();
+      refreshJoinPreview(state.join.assets.length ? '图片顺序已更新，预览同步刷新。' : '图片已全部移除。');
+    }
+
+    /**
+     * 清空拼接画布并恢复初始提示。
+     * @param {string} statusMessage 状态区域显示的提示，可为空
+     * @returns {void}
+     */
+    function clearJoinPreview(statusMessage) {
+      // 1. 清理结果：无图片时不保留旧画布和下载能力。
+      state.join.generated = false;
+      ui.joinDownload.disabled = true;
+      ui.joinCanvas.hidden = true;
+      ui.joinEmpty.hidden = false;
+      // 2. 恢复提示：预览标题与状态区域同步说明当前为空。
+      ui.joinMeta.textContent = '尚未添加图片';
+      setStatus(ui.joinStatus, statusMessage, false);
+    }
+
+    /**
+     * 根据当前图片队列刷新或清空实时拼接预览。
+     * @param {string} statusMessage 生成成功后显示的提示，可为空
+     * @returns {void}
+     */
+    function refreshJoinPreview(statusMessage) {
+      // 1. 取消旧任务：上传、排序等立即刷新操作优先使用最新队列。
+      if (state.join.previewFrame) {
+        cancelAnimationFrame(state.join.previewFrame);
+        state.join.previewFrame = 0;
+      }
+      // 2. 处理空队列：移除最后一张图片后立即恢复空状态。
+      if (!state.join.assets.length) {
+        clearJoinPreview(statusMessage);
+        return;
+      }
+      // 3. 生成结果：一张图片即可预览，多张图片按当前参数拼接。
+      generateJoin(statusMessage);
+    }
+
+    /**
+     * 执行已排队的实时拼接预览任务。
+     * @returns {void}
+     */
+    function runScheduledJoinPreview() {
+      // 1. 清除帧编号：允许后续参数继续排队刷新。
+      state.join.previewFrame = 0;
+      // 2. 使用最新参数重绘：连续输入只保留最后一次状态。
+      refreshJoinPreview('');
+    }
+
+    /**
+     * 将拼接参数变化合并到浏览器下一绘制帧执行。
+     * @param {Event} event 方向、尺寸、间距或背景色的输入事件
+     * @returns {void}
+     */
+    function scheduleJoinPreview(event) {
+      /** 当前发生变化的拼接参数控件。 */
+      const target = event.currentTarget;
+      // 1. 处理未完成数字：输入过程中允许暂时留空，失去焦点时恢复安全默认值。
+      if ((target === ui.joinSize || target === ui.joinGap) && target.value === '') {
+        if (event.type === 'input') return;
+        target.value = target === ui.joinSize ? '800' : '0';
+      }
+      // 2. 标记旧结果：新预览完成前暂时禁止下载旧画布。
+      state.join.generated = false;
+      ui.joinDownload.disabled = true;
+      // 3. 合并刷新：取消上一帧任务，只按最新参数重绘一次。
+      if (state.join.previewFrame) cancelAnimationFrame(state.join.previewFrame);
+      state.join.previewFrame = requestAnimationFrame(runScheduledJoinPreview);
+    }
+
+    /**
+     * 生成横向或纵向拼接画布。
+     * @param {string} statusMessage 生成成功后显示的提示，可为空
+     * @returns {void}
+     */
+    function generateJoin(statusMessage) {
+      if (!state.join.assets.length) return;
+      try {
+        /** 当前选中的拼接方向单选框。 */
+        const directionOption = ui.joinDirection.querySelector('input[name="joinDirection"]:checked');
+        /** 用户选择的拼接方向，缺省时使用横向。 */
+        const direction = directionOption ? directionOption.value : 'horizontal';
+        /** 横向时为统一高度，纵向时为统一宽度。 */
+        const sharedSize = clamp(Math.round(Number(ui.joinSize.value)), 50, 4000);
+        /** 图片之间的间隔像素。 */
+        const gap = clamp(Math.round(Number(ui.joinGap.value)), 0, 500);
+        /** 每张图片等比缩放后的尺寸。 */
+        const sizes = state.join.assets.map(
+        /** @param {object} asset 当前图片资源；@returns {{width:number,height:number}} 等比缩放尺寸。 */
+        function calculateSize(asset) {
+          return direction === 'horizontal'
+            ? { width: Math.round(asset.width * sharedSize / asset.height), height: sharedSize }
+            : { width: sharedSize, height: Math.round(asset.height * sharedSize / asset.width) };
+        });
+        /** 拼接结果宽度。 */
+        const outputWidth = direction === 'horizontal' ? sizes.reduce(
+          /** @param {number} total 已累计宽度；@param {object} size 当前图片尺寸；@returns {number} 新累计宽度。 */
+          function sumWidth(total, size) { return total + size.width; }, 0) + gap * (sizes.length - 1) : sharedSize;
+        /** 拼接结果高度。 */
+        const outputHeight = direction === 'vertical' ? sizes.reduce(
+          /** @param {number} total 已累计高度；@param {object} size 当前图片尺寸；@returns {number} 新累计高度。 */
+          function sumHeight(total, size) { return total + size.height; }, 0) + gap * (sizes.length - 1) : sharedSize;
+        /** 拼接画布绘图上下文。 */
+        const context = ui.joinCanvas.getContext('2d');
+        /** 下一张图片的绘制起点。 */
+        let offset = 0;
+        // 1. 规范输入并初始化画布：先绘制用户选定的间距背景色。
+        validateCanvasSize(outputWidth, outputHeight);
+        ui.joinSize.value = String(sharedSize);
+        ui.joinGap.value = String(gap);
+        ui.joinCanvas.width = outputWidth;
+        ui.joinCanvas.height = outputHeight;
+        context.fillStyle = ui.joinBackground.value;
+        context.fillRect(0, 0, outputWidth, outputHeight);
+        // 2. 依序拼接：每张图片保持原始比例。
+        state.join.assets.forEach(
+        /** @param {object} asset 当前图片资源；@param {number} index 队列索引；@returns {void} */
+        function drawAsset(asset, index) {
+          /** 当前图片的输出尺寸。 */
+          const size = sizes[index];
+          /** 当前图片横坐标。 */
+          const x = direction === 'horizontal' ? offset : 0;
+          /** 当前图片纵坐标。 */
+          const y = direction === 'vertical' ? offset : 0;
+          context.drawImage(asset.image, x, y, size.width, size.height);
+          offset += (direction === 'horizontal' ? size.width : size.height) + gap;
+        });
+        // 3. 显示结果：下载按钮只在成功生成后启用。
+        state.join.generated = true;
+        ui.joinEmpty.hidden = true;
+        ui.joinCanvas.hidden = false;
+        ui.joinDownload.disabled = false;
+        ui.joinMeta.textContent = outputWidth + ' × ' + outputHeight + ' · ' + state.join.assets.length + ' 张';
+        if (statusMessage) setStatus(ui.joinStatus, statusMessage, false);
+      } catch (error) {
+        state.join.generated = false;
+        ui.joinDownload.disabled = true;
+        setStatus(ui.joinStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 下载最近生成的拼接图。
+     * @returns {Promise<void>}
+     */
+    async function exportJoin() {
+      if (!state.join.generated) return;
+      try {
+        await downloadCanvas(ui.joinCanvas, 'joined-image', ui.joinFormat.value);
+        setStatus(ui.joinStatus, '拼接图片已生成。', false);
+      } catch (error) {
+        setStatus(ui.joinStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 加载网格切图的源图片。
+     * @param {Event} event 文件输入变更事件
+     * @returns {Promise<void>}
+     */
+    async function handleGridFile(event) {
+      /** 用户选择的第一张网格源图。 */
+      const file = event.target.files[0];
+      if (!file) return;
+      setStatus(ui.gridStatus, '正在读取图片…', false);
+      try {
+        /** 成功解码的新网格资源。 */
+        const asset = await loadAsset(file);
+        // 1. 替换源图：释放旧对象，并取消仍在排队的参数刷新。
+        releaseAsset(state.grid.asset);
+        if (state.grid.previewFrame) cancelAnimationFrame(state.grid.previewFrame);
+        state.grid.asset = asset;
+        state.grid.previewFrame = 0;
+        // 2. 自动切图：沿用当前网格设置，上传完成后立即生成可下载结果。
+        ui.gridMeta.textContent = asset.name + ' · ' + asset.width + ' × ' + asset.height;
+        generateGrid('图片已上传，切片已自动生成。');
+      } catch (error) {
+        setStatus(ui.gridStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 应用用户勾选的常用网格，并立即刷新已有图片的切片。
+     * @param {Event} event 常用网格单选框的变更事件
+     * @returns {void}
+     */
+    function handleGridPreset(event) {
+      // 1. 确认来源：字段组内只有网格单选框会触发行列更新。
+      if (!(event.target instanceof HTMLInputElement) || event.target.name !== 'gridPreset') return;
+      /** 用户本次勾选的网格预设或自定义标记。 */
+      const selectedValue = event.target.value;
+      if (selectedValue === 'custom') return;
+      /** 预设中的列数与行数字符串。 */
+      const parts = selectedValue.split('x');
+      // 2. 应用预设：同步列数与行数，已有图片会直接重新切分。
+      ui.gridColumns.value = parts[0];
+      ui.gridRows.value = parts[1];
+      refreshGridPreview('常用网格已应用，切片已自动更新。');
+    }
+
+    /**
+     * 将手动网格输入标记为自定义，并安排实时切图。
+     * @param {Event} event 列数或行数的输入事件
+     * @returns {void}
+     */
+    function handleGridDimension(event) {
+      /** 自定义网格单选框。 */
+      const customOption = ui.gridPreset.querySelector('input[name="gridPreset"][value="custom"]');
+      // 1. 同步选择状态：手动编辑后明确显示当前使用自定义网格。
+      if (customOption) customOption.checked = true;
+      // 2. 容忍输入中的短暂空值：用户完成数字输入后再刷新切片。
+      if (event.type === 'input' && event.target.value === '') return;
+      scheduleGridPreview();
+    }
+
+    /**
+     * 取消待处理任务并立即刷新网格切图预览。
+     * @param {string} statusMessage 刷新完成后展示的状态消息；空字符串表示使用默认消息
+     * @returns {void}
+     */
+    function refreshGridPreview(statusMessage) {
+      if (!state.grid.asset) return;
+      // 1. 取消旧任务：预设切换应立即覆盖尚未执行的输入刷新。
+      if (state.grid.previewFrame) cancelAnimationFrame(state.grid.previewFrame);
+      state.grid.previewFrame = 0;
+      // 2. 生成新结果：界面始终展示与当前参数一致的切片。
+      generateGrid(statusMessage);
+    }
+
+    /**
+     * 将连续的行列输入合并到下一动画帧，避免同一帧重复切图。
+     * @returns {void}
+     */
+    function scheduleGridPreview() {
+      if (!state.grid.asset) return;
+      // WHY: 数字输入可能在短时间内连续触发，逐次创建全部画布会造成不必要的卡顿。
+      if (state.grid.previewFrame) cancelAnimationFrame(state.grid.previewFrame);
+      state.grid.previewFrame = requestAnimationFrame(runScheduledGridPreview);
+    }
+
+    /**
+     * 执行已排队的实时网格切图任务。
+     * @returns {void}
+     */
+    function runScheduledGridPreview() {
+      state.grid.previewFrame = 0;
+      generateGrid('网格参数已更新，切片已自动刷新。');
+    }
+
+    /**
+     * 按行列平均分割源图并渲染下载卡片。
+     * @param {string} [statusMessage] 完成后展示的状态消息；省略时显示切片数量
+     * @returns {void}
+     */
+    function generateGrid(statusMessage) {
+      if (!state.grid.asset) return;
+      try {
+        /** 网格列数，限制为 1 到 6。 */
+        const columns = clamp(Math.round(Number(ui.gridColumns.value)), 1, 6);
+        /** 网格行数，限制为 1 到 6。 */
+        const rows = clamp(Math.round(Number(ui.gridRows.value)), 1, 6);
+        // 1. 规范输入并清空旧切片。
+        ui.gridColumns.value = String(columns);
+        ui.gridRows.value = String(rows);
+        state.grid.tiles = [];
+        ui.gridDownloadAll.disabled = true;
+        ui.gridTiles.replaceChildren();
+        ui.gridTiles.style.setProperty('--grid-columns', String(Math.min(columns, 4)));
+        // 2. 逐格切分：使用整数边界，确保所有源图像素都被覆盖一次。
+        for (let row = 0; row < rows; row += 1) {
+          for (let column = 0; column < columns; column += 1) {
+            /** 当前切片左边界。 */
+            const sourceX = Math.floor(column * state.grid.asset.width / columns);
+            /** 当前切片上边界。 */
+            const sourceY = Math.floor(row * state.grid.asset.height / rows);
+            /** 当前切片右边界。 */
+            const sourceRight = Math.floor((column + 1) * state.grid.asset.width / columns);
+            /** 当前切片下边界。 */
+            const sourceBottom = Math.floor((row + 1) * state.grid.asset.height / rows);
+            /** 当前切片宽度。 */
+            const width = sourceRight - sourceX;
+            /** 当前切片高度。 */
+            const height = sourceBottom - sourceY;
+            /** 保存切片像素的画布。 */
+            const canvas = document.createElement('canvas');
+            /** 切片画布绘图上下文。 */
+            const context = canvas.getContext('2d');
+            /** 切片预览卡片。 */
+            const card = document.createElement('article');
+            /** 切片编号与尺寸的底栏。 */
+            const footer = document.createElement('div');
+            /** 切片编号与尺寸文字。 */
+            const label = document.createElement('span');
+            /** 单独下载当前切片的按钮。 */
+            const button = document.createElement('button');
+            validateCanvasSize(width, height);
+            canvas.width = width;
+            canvas.height = height;
+            canvas.setAttribute('aria-label', '第 ' + (row + 1) + ' 行第 ' + (column + 1) + ' 列切片');
+            context.drawImage(state.grid.asset.image, sourceX, sourceY, width, height, 0, 0, width, height);
+            card.className = 'tile-card';
+            footer.className = 'tile-footer';
+            label.textContent = (row + 1) + '-' + (column + 1) + ' · ' + width + '×' + height;
+            button.type = 'button';
+            button.className = 'button small';
+            button.textContent = '下载';
+            button.dataset.tileIndex = String(state.grid.tiles.length);
+            button.setAttribute('aria-label', '下载第 ' + (row + 1) + ' 行第 ' + (column + 1) + ' 列切片');
+            footer.append(label, button);
+            card.append(canvas, footer);
+            ui.gridTiles.appendChild(card);
+            state.grid.tiles.push({ canvas: canvas, row: row + 1, column: column + 1 });
+          }
+        }
+        // 3. 显示结果：更新切片数量和批量下载状态。
+        ui.gridEmpty.hidden = true;
+        ui.gridTiles.hidden = false;
+        ui.gridDownloadAll.disabled = false;
+        ui.gridMeta.textContent = columns + ' 列 × ' + rows + ' 行 · ' + state.grid.tiles.length + ' 张';
+        setStatus(ui.gridStatus, statusMessage || '已生成 ' + state.grid.tiles.length + ' 张切片。', false);
+      } catch (error) {
+        ui.gridDownloadAll.disabled = true;
+        setStatus(ui.gridStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 下载用户点击的单张网格切片。
+     * @param {MouseEvent} event 切片区域点击事件
+     * @returns {Promise<void>}
+     */
+    async function handleTileDownload(event) {
+      /** 用户点击的切片下载按钮。 */
+      const button = event.target.closest('button[data-tile-index]');
+      if (!button) return;
+      /** 对应的切片索引。 */
+      const index = Number(button.dataset.tileIndex);
+      /** 对应的切片对象。 */
+      const tile = state.grid.tiles[index];
+      try {
+        await downloadCanvas(tile.canvas, 'grid-' + tile.row + '-' + tile.column, ui.gridFormat.value);
+        setStatus(ui.gridStatus, '切片 ' + tile.row + '-' + tile.column + ' 已生成。', false);
+      } catch (error) {
+        setStatus(ui.gridStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 依序下载全部网格切片。
+     * @returns {Promise<void>}
+     */
+    async function downloadAllTiles() {
+      if (!state.grid.tiles.length) return;
+      try {
+        // 1. 暂停按钮：避免用户重复触发多轮下载。
+        ui.gridDownloadAll.disabled = true;
+        setStatus(ui.gridStatus, '正在生成全部切片…', false);
+        // 2. 逐张编码：保持文件名与网格行列对应。
+        for (const tile of state.grid.tiles) {
+          await downloadCanvas(tile.canvas, 'grid-' + tile.row + '-' + tile.column, ui.gridFormat.value);
+        }
+        // 3. 恢复按钮：批量操作完成后允许再次下载。
+        ui.gridDownloadAll.disabled = false;
+        setStatus(ui.gridStatus, '全部 ' + state.grid.tiles.length + ' 张切片已生成。', false);
+      } catch (error) {
+        ui.gridDownloadAll.disabled = false;
+        setStatus(ui.gridStatus, error.message, true);
+      }
+    }
+
+    /**
+     * 在页面关闭前释放所有图片对象地址。
+     * @returns {void}
+     */
+    function releaseAllAssets() {
+      // 1. 释放单图资源。
+      releaseAsset(state.crop.asset);
+      releaseAsset(state.grid.asset);
+      // 2. 释放拼接队列中的全部图片。
+      state.join.assets.forEach(releaseAsset);
+    }
+
+    /**
+     * 展开或收起左侧相关链接栏，并同步按钮的可访问状态。
+     * @returns {void}
+     */
+    function toggleResourcePanel() {
+      /** 点击前相关链接栏是否处于展开状态。 */
+      const isExpanded = ui.resourceToggle.getAttribute('aria-expanded') === 'true';
+      /** 点击后相关链接栏应切换到的状态。 */
+      const nextExpanded = !isExpanded;
+      // 1. 同步内容可见性：收起后链接离开键盘焦点顺序。
+      ui.resourceContent.hidden = !nextExpanded;
+      ui.contentLayout.classList.toggle('resources-collapsed', !nextExpanded);
+      // 2. 同步按钮语义：辅助技术可读出当前状态与下一步操作。
+      ui.resourceToggle.setAttribute('aria-expanded', String(nextExpanded));
+      ui.resourceToggle.setAttribute('aria-label', nextExpanded ? '收起相关链接' : '展开相关链接');
+    }
+
+    // 1. 资源栏交互：按钮可通过鼠标、回车键或空格键切换展开状态。
+    ui.resourceToggle.addEventListener('click', toggleResourcePanel);
+    // 2. 模式切换：选项卡支持点击和标准键盘导航。
+    tabButtons.forEach(
+    /** @param {HTMLButtonElement} button 待绑定的模式按钮；@returns {void} */
+    function bindTab(button) {
+      button.addEventListener('click', handleTabClick);
+      button.addEventListener('keydown', handleTabKeydown);
+    });
+    // 3. 裁剪事件：文件、尺寸、缩放、拖动、键盘和导出。
+    ui.cropFile.addEventListener('change', handleCropFile);
+    ui.cropPreset.addEventListener('change', handleCropPreset);
+    ui.cropWidth.addEventListener('input', markCropDimensionCustom);
+    ui.cropHeight.addEventListener('input', markCropDimensionCustom);
+    ui.cropWidth.addEventListener('change', handleCropDimension);
+    ui.cropHeight.addEventListener('change', handleCropDimension);
+    ui.cropZoom.addEventListener('input', handleCropZoom);
+    ui.cropReset.addEventListener('click', centerCropRect);
+    ui.cropDownload.addEventListener('click', exportCrop);
+    ui.cropCanvas.addEventListener('pointerdown', handleCropPointerDown);
+    ui.cropCanvas.addEventListener('pointermove', handleCropPointerMove);
+    ui.cropCanvas.addEventListener('pointerup', handleCropPointerUp);
+    ui.cropCanvas.addEventListener('pointercancel', handleCropPointerUp);
+    ui.cropCanvas.addEventListener('keydown', handleCropKeydown);
+    // 4. 拼接事件：文件队列、排序、实时预览和下载。
+    ui.joinFiles.addEventListener('change', handleJoinFiles);
+    ui.joinList.addEventListener('click', handleJoinListClick);
+    ui.joinDirection.addEventListener('change', scheduleJoinPreview);
+    ui.joinSize.addEventListener('input', scheduleJoinPreview);
+    ui.joinSize.addEventListener('change', scheduleJoinPreview);
+    ui.joinGap.addEventListener('input', scheduleJoinPreview);
+    ui.joinGap.addEventListener('change', scheduleJoinPreview);
+    ui.joinBackground.addEventListener('input', scheduleJoinPreview);
+    ui.joinDownload.addEventListener('click', exportJoin);
+    // 5. 网格事件：上传后自动切图，预设和自定义行列均实时刷新。
+    ui.gridFile.addEventListener('change', handleGridFile);
+    ui.gridPreset.addEventListener('change', handleGridPreset);
+    ui.gridColumns.addEventListener('input', handleGridDimension);
+    ui.gridColumns.addEventListener('change', handleGridDimension);
+    ui.gridRows.addEventListener('input', handleGridDimension);
+    ui.gridRows.addEventListener('change', handleGridDimension);
+    ui.gridTiles.addEventListener('click', handleTileDownload);
+    ui.gridDownloadAll.addEventListener('click', downloadAllTiles);
+    // 6. 生命周期清理：页面离开时归还对象 URL 占用的内存。
+    window.addEventListener('beforeunload', releaseAllAssets);
+  </script>
+</body>
+</html>
