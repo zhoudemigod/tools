@@ -1,0 +1,2708 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一款支持画布、背景、文字与图层编辑的单页海报设计工具。">
+  <title>Folio 海报设计台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;600;700;800;900&family=Noto+Serif+SC:wght@600;700;900&family=Space+Grotesk:wght@500;600;700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --app-bg: #111210;
+      --panel: #181a17;
+      --panel-soft: #1e201d;
+      --panel-raised: #242622;
+      --line: #30332e;
+      --line-strong: #44483f;
+      --text: #f3f1e9;
+      --muted: #959a8d;
+      --accent: #d7ff45;
+      --accent-ink: #171b09;
+      --danger: #ff796f;
+      --focus: rgba(215, 255, 69, 0.35);
+      --radius-sm: 7px;
+      --radius-md: 11px;
+      --header-height: 64px;
+      font-family: "Noto Sans SC", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: var(--app-bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    button { color: inherit; }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: var(--header-height) minmax(0, 1fr);
+      height: 100%;
+      min-width: 320px;
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-areas: "brand controls actions";
+      grid-template-columns: minmax(150px, 1fr) minmax(0, auto) minmax(150px, 1fr);
+      grid-template-rows: var(--header-height);
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: #151613;
+    }
+
+    .brand {
+      grid-area: brand;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-family: "Space Grotesk", "Noto Sans SC", sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 17px;
+      transform: rotate(-3deg);
+    }
+
+    .brand small {
+      display: block;
+      margin-top: 1px;
+      color: var(--muted);
+      font-family: "Noto Sans SC", sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+    }
+
+    .header-controls {
+      grid-area: controls;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 0;
+      height: var(--header-height);
+      overflow-x: auto;
+      padding: 0 2px;
+      scrollbar-width: none;
+    }
+
+    .header-controls::-webkit-scrollbar { display: none; }
+
+    .top-actions {
+      grid-area: actions;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 9px;
+    }
+
+    .top-actions .button { white-space: nowrap; }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-sm);
+      background: var(--panel-soft);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 120ms ease;
+    }
+
+    .button:hover { border-color: #686d5e; background: #292c27; }
+    .button:active { transform: translateY(1px); }
+    .button.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+    .button.primary:hover { background: #e0ff6d; }
+    .button.icon-only { width: 34px; padding: 0; }
+    .button:disabled { cursor: not-allowed; opacity: 0.4; }
+
+    .icon {
+      width: 16px;
+      height: 16px;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 288px minmax(380px, 1fr) 258px;
+      min-height: 0;
+    }
+
+    .sidebar {
+      min-height: 0;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #464a40 transparent;
+      background: var(--panel);
+    }
+
+    .sidebar.left { border-right: 1px solid var(--line); }
+    .sidebar.right { border-left: 1px solid var(--line); }
+
+    .panel-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-note { color: var(--muted); font-size: 11px; }
+
+    .ratio-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    .ratio-button {
+      display: grid;
+      gap: 4px;
+      min-height: 56px;
+      place-items: center;
+      padding: 7px 4px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--panel-soft);
+      color: var(--muted);
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .ratio-button:hover { border-color: var(--line-strong); color: var(--text); }
+    .ratio-button.active { border-color: var(--accent); background: rgba(215, 255, 69, 0.08); color: var(--accent); }
+    .ratio-button strong { font-size: 12px; }
+    .ratio-button span { font-size: 9px; }
+
+    .ratio-shape {
+      display: block;
+      width: 16px;
+      height: 20px;
+      border: 1.5px solid currentColor;
+      border-radius: 2px;
+    }
+
+    .ratio-shape.square { height: 16px; }
+    .ratio-shape.landscape { width: 22px; height: 14px; }
+    .ratio-shape.story { width: 12px; height: 21px; }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 18px 1fr;
+      align-items: end;
+      gap: 7px;
+      margin-top: 13px;
+    }
+
+    .field-row .times { padding-bottom: 9px; color: var(--muted); text-align: center; }
+
+    .field { display: grid; gap: 7px; min-width: 0; }
+
+    .field label,
+    .field-label { color: var(--muted); font-size: 11px; font-weight: 500; }
+
+    .input,
+    .select,
+    .textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: #131512;
+      color: var(--text);
+      transition: border-color 160ms ease, background 160ms ease;
+    }
+
+    .input, .select { height: 36px; padding: 0 10px; }
+    .textarea { min-height: 74px; padding: 9px 10px; resize: vertical; line-height: 1.55; }
+    .input:hover, .select:hover, .textarea:hover { border-color: var(--line-strong); }
+    .input:disabled, .select:disabled, .textarea:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .full-button { width: 100%; margin-top: 9px; }
+
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 36px);
+      gap: 6px;
+      justify-content: start;
+    }
+
+    .swatch {
+      position: relative;
+      aspect-ratio: 1;
+      padding: 0;
+      overflow: hidden;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      background: var(--swatch);
+      cursor: pointer;
+      transition: border-color 160ms ease, transform 160ms ease;
+    }
+
+    .swatch:hover { transform: translateY(-2px); }
+    .swatch.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--panel), 0 0 0 2px var(--accent); }
+
+    .swatch.upload-swatch {
+      display: grid;
+      place-items: center;
+      border: 1px dashed var(--line-strong);
+      background: #20221e;
+      color: var(--muted);
+    }
+
+    .swatch.upload-swatch:hover { border-color: #777d6c; color: var(--text); }
+    .swatch.upload-swatch.active { border-style: solid; border-color: var(--accent); color: var(--accent); }
+    .swatch.upload-swatch .icon { width: 15px; height: 15px; }
+
+    .custom-background {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 13px;
+    }
+
+    .color-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: #131512;
+    }
+
+    .color-field input[type="color"] {
+      width: 23px;
+      height: 23px;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .color-field span { overflow: hidden; color: var(--muted); font-family: "Space Grotesk", monospace; font-size: 10px; text-overflow: ellipsis; }
+
+    .editor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .editor-grid .wide { grid-column: 1 / -1; }
+
+    .style-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+
+    .style-button {
+      display: grid;
+      place-items: center;
+      height: 34px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #131512;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .style-button:hover { color: var(--text); border-color: var(--line-strong); }
+    .style-button.active { border-color: var(--accent); background: rgba(215, 255, 69, 0.08); color: var(--accent); }
+    .style-button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .range-row { display: flex; align-items: center; gap: 10px; }
+    .range-row input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .range-value { min-width: 34px; color: var(--muted); font-family: "Space Grotesk", monospace; text-align: right; }
+
+    .stage-column {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr);
+      min-width: 0;
+      min-height: 0;
+      background: #0f100e;
+    }
+
+    .canvas-summary {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex: none;
+      min-height: 34px;
+      padding: 0 10px;
+      border-right: 1px solid var(--line-strong);
+      color: var(--muted);
+    }
+
+    .canvas-summary strong { color: var(--text); font-family: "Space Grotesk", monospace; font-size: 12px; white-space: nowrap; }
+
+    .header-controls .ratio-grid { display: flex; gap: 5px; flex: none; }
+
+    .header-controls .ratio-button {
+      display: flex;
+      gap: 6px;
+      min-height: 34px;
+      padding: 0 9px;
+      white-space: nowrap;
+    }
+
+    .header-controls .ratio-button .ratio-shape { display: none; }
+    .header-controls .ratio-button span { color: var(--muted); font-size: 9px; }
+    .header-controls .ratio-button.active span { color: var(--accent); opacity: 0.72; }
+
+    .header-size-fields {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: none;
+      padding-left: 4px;
+    }
+
+    .header-size-fields .input { width: 76px; min-height: 34px; padding: 0 9px; font-family: "Space Grotesk", monospace; }
+    .header-size-fields .times { color: var(--muted); }
+    .header-size-fields .button { min-height: 34px; padding: 0 11px; }
+
+    .zoom-control { display: flex; align-items: center; gap: 7px; flex: none; padding: 0 4px 0 8px; border-left: 1px solid var(--line-strong); }
+    .zoom-control input { width: 88px; accent-color: var(--accent); }
+    .zoom-control span { min-width: 36px; color: var(--muted); font-family: "Space Grotesk", monospace; font-size: 11px; text-align: right; }
+
+    .stage-viewport {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      padding: 48px;
+      background-color: #10110f;
+      background-image: radial-gradient(circle, #2a2c27 0.8px, transparent 0.8px);
+      background-size: 18px 18px;
+      scrollbar-width: thin;
+      scrollbar-color: #44483f transparent;
+    }
+
+    .canvas-centering {
+      display: grid;
+      min-width: 100%;
+      min-height: 100%;
+      place-items: center;
+    }
+
+    .canvas-shell {
+      position: relative;
+      flex: none;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      transition: width 180ms ease, height 180ms ease;
+    }
+
+    .poster-canvas {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      user-select: none;
+      isolation: isolate;
+    }
+
+    .canvas-layer {
+      position: absolute;
+      display: flex;
+      align-items: flex-start;
+      border: 1px solid transparent;
+      cursor: move;
+      touch-action: none;
+    }
+
+    .canvas-layer:hover { border-color: rgba(255, 255, 255, 0.46); }
+    .canvas-layer.selected { border-color: var(--accent); }
+    .canvas-layer.editing { border-color: var(--accent); cursor: text; }
+    .canvas-layer.preview-mode { border-color: transparent !important; cursor: default; }
+
+    .text-content {
+      width: 100%;
+      color: inherit;
+      font: inherit;
+      line-height: 0.96;
+      overflow-wrap: normal;
+      word-break: normal;
+      pointer-events: none;
+      white-space: pre;
+    }
+
+    .canvas-layer.editing .text-content {
+      min-height: 1em;
+      outline: none;
+      caret-color: var(--accent);
+      cursor: text;
+      pointer-events: auto;
+      user-select: text;
+    }
+
+    .resize-handle {
+      position: absolute;
+      right: -6px;
+      bottom: -6px;
+      display: none;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #151613;
+      border-radius: 2px;
+      background: var(--accent);
+      cursor: nwse-resize;
+    }
+
+    .canvas-layer.selected .resize-handle { display: block; }
+    .canvas-layer.editing .resize-handle { display: none; }
+    .canvas-layer.preview-mode .resize-handle { display: none; }
+
+    .preview-badge {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      z-index: 20;
+      display: none;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(17, 18, 16, 0.82);
+      color: #fff;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      pointer-events: none;
+      transform: translateX(-50%);
+    }
+
+    .preview-badge.visible { display: block; }
+
+    .layers-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 16px 12px;
+    }
+
+    .layer-add-control { position: relative; }
+
+    .layer-add-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 70;
+      width: 174px;
+      padding: 6px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: #20221e;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+    }
+
+    .layer-add-option {
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 42px;
+      padding: 5px 8px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .layer-add-option:hover { background: #30332d; }
+
+    .layer-add-option-icon {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      color: var(--muted);
+      font-family: "Noto Serif SC", serif;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .layer-add-option-copy strong,
+    .layer-add-option-copy small { display: block; }
+    .layer-add-option-copy strong { font-size: 12px; }
+    .layer-add-option-copy small { margin-top: 2px; color: var(--muted); font-size: 9px; }
+
+    .layers-list { display: grid; gap: 6px; padding: 0 10px 12px; }
+
+    .layer-row {
+      display: grid;
+      grid-template-columns: 30px 34px minmax(0, 1fr) auto;
+      align-items: center;
+      min-height: 54px;
+      padding: 4px 7px 4px 5px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+      transition: 150ms ease;
+    }
+
+    .layer-row:hover { background: var(--panel-soft); }
+    .layer-row.active { border-color: #4e5347; background: var(--panel-raised); }
+    .layer-row.dimmed { opacity: 0.48; }
+
+    .layer-visibility,
+    .layer-delete {
+      display: grid;
+      place-items: center;
+      width: 27px;
+      height: 27px;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .layer-visibility:hover, .layer-delete:hover { background: #30332d; color: var(--text); }
+    .layer-delete:hover { color: var(--danger); }
+
+    .layer-thumb {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: #121310;
+      color: var(--muted);
+      font-family: "Noto Serif SC", serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .layer-thumb.image-thumb { overflow: hidden; border-color: #555a4e; }
+    .layer-thumb.image-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+    .image-content {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .layer-copy { min-width: 0; padding: 0 8px; }
+    .layer-copy strong, .layer-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .layer-copy strong { font-size: 12px; font-weight: 600; }
+    .layer-copy small { margin-top: 3px; color: var(--muted); font-size: 10px; }
+
+    .background-row { cursor: default; }
+    .background-thumb { border: 0; background: var(--current-background); }
+
+    .layer-order-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tip-card {
+      margin: 16px;
+      padding: 13px;
+      border-left: 2px solid var(--accent);
+      background: rgba(215, 255, 69, 0.05);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.65;
+    }
+
+    .tip-card strong { color: var(--text); }
+
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      z-index: 100;
+      padding: 9px 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #23251f;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      color: var(--text);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 10px);
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 1320px) {
+      #previewButton .button-label { display: none; }
+    }
+
+    @media (max-width: 1240px) {
+      .header-controls { gap: 7px; }
+      .canvas-summary { padding: 0 8px; }
+      .canvas-summary > span,
+      .header-controls .ratio-button span { display: none; }
+      .header-controls .ratio-button { padding: 0 9px; }
+      .header-size-fields .input { width: 68px; }
+      .zoom-control input { width: 68px; }
+    }
+
+    @media (max-width: 1040px) {
+      .workspace { grid-template-columns: 254px minmax(360px, 1fr) 220px; }
+      .panel-section { padding: 16px; }
+      .topbar { grid-template-columns: minmax(130px, 1fr) minmax(0, auto) minmax(80px, 1fr); gap: 8px; }
+      .button .button-label { display: none; }
+    }
+
+    @media (max-width: 820px) {
+      body { overflow: auto; }
+      .app { height: auto; min-height: 100%; }
+      .topbar { position: sticky; top: 0; grid-template-areas: "brand controls actions"; grid-template-columns: auto minmax(0, 1fr) auto; padding: 0 12px; }
+      .brand { font-size: 13px; }
+      .brand small { display: none; }
+      .header-controls { justify-content: flex-start; gap: 7px; }
+      .zoom-control input { width: 64px; }
+      .workspace { grid-template-columns: 1fr; grid-template-rows: auto minmax(620px, 70vh) auto; }
+      .sidebar.left { border-right: 0; border-bottom: 1px solid var(--line); }
+      .sidebar.right { border-top: 1px solid var(--line); border-left: 0; }
+      .sidebar { overflow: visible; }
+      .stage-column { grid-row: 1; min-height: 620px; }
+      .sidebar.left { grid-row: 2; }
+      .sidebar.right { grid-row: 3; }
+      .stage-viewport { padding: 28px; }
+      .panel-section { padding: 18px; }
+    }
+
+    @media (max-width: 560px) {
+      .brand > div:last-child { display: none; }
+      .header-controls { gap: 6px; }
+      .zoom-control { gap: 4px; padding-right: 2px; }
+      .zoom-control .icon { display: none; }
+      .zoom-control input { width: 52px; }
+      .top-actions { gap: 5px; }
+      .button { padding: 0 9px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">F</div>
+        <div>FOLIO <small>POSTER STUDIO</small></div>
+      </div>
+      <div class="header-controls" aria-label="画布视图控制">
+        <div class="canvas-summary"><span>画布</span><strong id="canvasInfo">800 × 1000</strong></div>
+        <div class="ratio-grid" id="ratioGrid" aria-label="常用画布比例">
+          <button class="ratio-button" type="button" data-width="1080" data-height="1080"><i class="ratio-shape square"></i><strong>1 : 1</strong><span>方图</span></button>
+          <button class="ratio-button active" type="button" data-width="800" data-height="1000"><i class="ratio-shape"></i><strong>4 : 5</strong><span>海报</span></button>
+          <button class="ratio-button" type="button" data-width="900" data-height="1200"><i class="ratio-shape"></i><strong>3 : 4</strong><span>封面</span></button>
+          <button class="ratio-button" type="button" data-width="1080" data-height="1920"><i class="ratio-shape story"></i><strong>9 : 16</strong><span>故事</span></button>
+          <button class="ratio-button" type="button" data-width="1600" data-height="900"><i class="ratio-shape landscape"></i><strong>16 : 9</strong><span>横版</span></button>
+        </div>
+        <div class="header-size-fields" aria-label="自定义画布尺寸">
+          <input class="input" id="canvasWidth" type="number" min="240" max="4000" value="800" aria-label="画布宽度">
+          <span class="times" aria-hidden="true">×</span>
+          <input class="input" id="canvasHeight" type="number" min="240" max="4000" value="1000" aria-label="画布高度">
+          <button class="button" id="applySizeButton" type="button">应用</button>
+        </div>
+        <div class="zoom-control">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4M8 11h6"></path></svg>
+          <input id="zoomRange" type="range" min="1" max="100" step="1" value="58" aria-label="画布缩放">
+          <span id="zoomValue">58%</span>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="button" id="previewButton" type="button" aria-pressed="false">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+          <span class="button-label">预览</span>
+        </button>
+        <button class="button primary" id="exportButton" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+          <span class="button-label">导出 PNG</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar left" aria-label="设计属性">
+        <section class="panel-section">
+          <div class="section-heading">
+            <h2 class="section-title">背景</h2>
+            <span class="section-note">预制色板</span>
+          </div>
+          <div class="swatch-grid" id="backgroundSwatches">
+            <button class="swatch" style="--swatch:#f4f0e6" type="button" aria-label="暖白纯色" title="暖白" data-type="solid" data-color="#f4f0e6"></button>
+            <button class="swatch" style="--swatch:#cfc4b2" type="button" aria-label="陶土灰纯色" title="陶土灰" data-type="solid" data-color="#cfc4b2"></button>
+            <button class="swatch" style="--swatch:#17171b" type="button" aria-label="深黑纯色" title="深黑" data-type="solid" data-color="#17171b"></button>
+            <button class="swatch" style="--swatch:#17231c" type="button" aria-label="墨绿纯色" title="墨绿" data-type="solid" data-color="#17231c"></button>
+            <button class="swatch" style="--swatch:#e8573f" type="button" aria-label="朱红纯色" title="朱红" data-type="solid" data-color="#e8573f"></button>
+            <button class="swatch" style="--swatch:#f4c542" type="button" aria-label="明黄纯色" title="明黄" data-type="solid" data-color="#f4c542"></button>
+            <button class="swatch" style="--swatch:#2f80ed" type="button" aria-label="湖蓝纯色" title="湖蓝" data-type="solid" data-color="#2f80ed"></button>
+            <button class="swatch" style="--swatch:#6c5ce7" type="button" aria-label="鸢尾紫纯色" title="鸢尾紫" data-type="solid" data-color="#6c5ce7"></button>
+            <button class="swatch active" style="--swatch:linear-gradient(145deg,#10271f,#2f704b)" type="button" aria-label="森林渐变" data-type="gradient" data-color="#10271f" data-color-two="#2f704b" data-angle="145"></button>
+            <button class="swatch" style="--swatch:linear-gradient(135deg,#ef8354,#e43f6f)" type="button" aria-label="日落渐变" data-type="gradient" data-color="#ef8354" data-color-two="#e43f6f" data-angle="135"></button>
+            <button class="swatch" style="--swatch:linear-gradient(150deg,#182848,#4b6cb7)" type="button" aria-label="午夜渐变" data-type="gradient" data-color="#182848" data-color-two="#4b6cb7" data-angle="150"></button>
+            <button class="swatch" style="--swatch:linear-gradient(145deg,#f2e9d8,#cfb591)" type="button" aria-label="纸张渐变" data-type="gradient" data-color="#f2e9d8" data-color-two="#cfb591" data-angle="145"></button>
+            <button class="swatch" style="--swatch:linear-gradient(135deg,#0f2027,#2c5364)" type="button" aria-label="深海渐变" data-type="gradient" data-color="#0f2027" data-color-two="#2c5364" data-angle="135"></button>
+            <button class="swatch" style="--swatch:linear-gradient(135deg,#42275a,#734b6d)" type="button" aria-label="浆果渐变" data-type="gradient" data-color="#42275a" data-color-two="#734b6d" data-angle="135"></button>
+            <button class="swatch" style="--swatch:linear-gradient(90deg,#f7971e,#ffd200)" type="button" aria-label="柑橘渐变" data-type="gradient" data-color="#f7971e" data-color-two="#ffd200" data-angle="90"></button>
+            <button class="swatch" style="--swatch:linear-gradient(135deg,#134e5e,#71b280)" type="button" aria-label="极光渐变" data-type="gradient" data-color="#134e5e" data-color-two="#71b280" data-angle="135"></button>
+            <button class="swatch" style="--swatch:linear-gradient(135deg,#fc5c7d,#6a82fb)" type="button" aria-label="糖果渐变" data-type="gradient" data-color="#fc5c7d" data-color-two="#6a82fb" data-angle="135"></button>
+            <button class="swatch upload-swatch" type="button" aria-label="上传背景图片" title="上传背景图片" data-action="upload-background">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9" r="1.5"></circle><path d="m4 17 5-5 4 4 2-2 5 5M12 8v-5m-2 2 2-2 2 2"></path></svg>
+            </button>
+          </div>
+          <div class="custom-background">
+            <label class="color-field" for="backgroundColorOne"><input id="backgroundColorOne" type="color" value="#10271f"><span id="colorOneValue">#10271F</span></label>
+            <label class="color-field" for="backgroundColorTwo"><input id="backgroundColorTwo" type="color" value="#2f704b"><span id="colorTwoValue">#2F704B</span></label>
+          </div>
+          <div class="field" style="margin-top:8px">
+            <label for="gradientDirection">背景类型与方向</label>
+            <select class="select" id="gradientDirection">
+              <option value="solid">纯色</option>
+              <option value="135">渐变 · 左上到右下</option>
+              <option value="150">渐变 · 深斜向</option>
+              <option value="90">渐变 · 上到下</option>
+              <option value="0">渐变 · 左到右</option>
+              <option value="145" selected>渐变 · 柔和斜向</option>
+            </select>
+          </div>
+          <button class="button full-button" id="applyBackgroundButton" type="button">应用自定义背景</button>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-heading">
+            <h2 class="section-title">文字</h2>
+            <button class="button icon-only" id="addTextButton" type="button" aria-label="新增文字">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            </button>
+          </div>
+          <div class="editor-grid" id="textEditor">
+            <div class="field wide"><label for="textContent">文字内容</label><textarea class="textarea" id="textContent" placeholder="先选择一个文字图层"></textarea></div>
+            <div class="field wide"><label for="fontFamily">字体</label>
+              <select class="select" id="fontFamily">
+                <option value="Noto Sans SC">思源黑体</option>
+                <option value="Noto Serif SC">思源宋体</option>
+                <option value="Ma Shan Zheng">马善政毛笔</option>
+                <option value="ZCOOL KuaiLe">站酷快乐体</option>
+                <option value="Space Grotesk">Space Grotesk</option>
+              </select>
+            </div>
+            <div class="field"><label for="fontSize">字号</label><input class="input" id="fontSize" type="number" min="12" max="320" value="64"></div>
+            <div class="field"><label for="textColor">颜色</label><label class="color-field" for="textColor"><input id="textColor" type="color" value="#ffffff"><span id="textColorValue">#FFFFFF</span></label></div>
+            <div class="field wide">
+              <span class="field-label">样式与对齐</span>
+              <div class="style-row">
+                <button class="style-button" id="boldButton" type="button" aria-label="加粗"><strong>B</strong></button>
+                <button class="style-button" id="italicButton" type="button" aria-label="斜体"><em>I</em></button>
+                <button class="style-button" type="button" data-align="left" aria-label="左对齐">≡</button>
+                <button class="style-button" type="button" data-align="center" aria-label="居中对齐">≣</button>
+                <button class="style-button" type="button" data-align="right" aria-label="右对齐">≡</button>
+              </div>
+            </div>
+            <div class="field wide">
+              <label for="letterSpacing">字间距</label>
+              <div class="range-row"><input id="letterSpacing" type="range" min="-8" max="30" step="1" value="0"><span class="range-value" id="letterSpacingValue">0</span></div>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="stage-column" aria-label="海报画布工作区">
+        <div class="stage-viewport" id="stageViewport">
+          <div class="canvas-centering">
+            <div class="canvas-shell" id="canvasShell">
+              <div class="poster-canvas" id="posterCanvas" aria-label="可编辑海报画布"></div>
+              <div class="preview-badge" id="previewBadge">预览模式 · ESC 退出</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="sidebar right" aria-label="图层面板">
+        <div class="layers-header">
+          <div><h2 class="section-title">图层</h2><div class="section-note" style="margin-top:4px">由上至下排列</div></div>
+          <div class="layer-add-control" id="layerAddControl">
+            <button class="button icon-only" id="addLayerButton" type="button" aria-label="新增图层" aria-expanded="false" aria-controls="layerAddMenu">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            </button>
+            <div class="layer-add-menu" id="layerAddMenu" hidden>
+              <button class="layer-add-option" id="addTextMenuButton" type="button">
+                <span class="layer-add-option-icon" aria-hidden="true">T</span>
+                <span class="layer-add-option-copy"><strong>添加文字</strong><small>新建可编辑文本</small></span>
+              </button>
+              <button class="layer-add-option" id="addImageMenuButton" type="button">
+                <span class="layer-add-option-icon" aria-hidden="true">▧</span>
+                <span class="layer-add-option-copy"><strong>上传图片</strong><small>PNG、JPG、WebP 等</small></span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="layers-list" id="layersList"></div>
+        <div class="layer-order-actions">
+          <button class="button" id="moveLayerUpButton" type="button">上移一层</button>
+          <button class="button" id="moveLayerDownButton" type="button">下移一层</button>
+        </div>
+        <div class="tip-card"><strong>快速操作</strong><br>单击选中并拖动；双击文字可直接编辑，按 Esc 或点击外部完成。画布区域滚动鼠标滚轮可缩放视图。</div>
+      </aside>
+    </main>
+  </div>
+
+  <input id="imageUploadInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden>
+  <input id="backgroundImageUploadInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    /** 海报编辑器的全部运行状态，尺寸单位均为设计像素。 */
+    const state = {
+      canvas: { width: 800, height: 1000 },
+      background: { type: "gradient", color: "#10271f", colorTwo: "#2f704b", angle: 145, src: null, imageName: null },
+      zoom: 58,
+      selectedLayerId: "title-layer",
+      editingLayerId: null,
+      preview: false,
+      nextLayerNumber: 1,
+      nextImageNumber: 1,
+      interaction: null,
+      layers: [
+        {
+          id: "eyebrow-layer", type: "text", name: "顶部说明", content: "FOLIO / VISUAL NOTES  2026", x: 84, y: 74,
+          width: 620, height: 32, fontSize: 22, fontFamily: "Space Grotesk", fontWeight: 600,
+          italic: false, align: "left", color: "#d7ff45", letterSpacing: 2, visible: true
+        },
+        {
+          id: "title-layer", type: "text", name: "主标题", content: "CREATE\nMORE", x: 78, y: 188,
+          width: 650, height: 222, fontSize: 112, fontFamily: "Space Grotesk", fontWeight: 700,
+          italic: false, align: "left", color: "#f3f1e9", letterSpacing: -5, visible: true
+        },
+        {
+          id: "subtitle-layer", type: "text", name: "副标题", content: "让每一个想法，都有清晰的视觉表达。", x: 84, y: 765,
+          width: 470, height: 70, fontSize: 29, fontFamily: "Noto Sans SC", fontWeight: 500,
+          italic: false, align: "left", color: "#f3f1e9", letterSpacing: 1, visible: true
+        },
+        {
+          id: "footer-layer", type: "text", name: "页脚信息", content: "DESIGN  ·  TYPE  ·  IMAGE", x: 84, y: 900,
+          width: 620, height: 34, fontSize: 18, fontFamily: "Space Grotesk", fontWeight: 600,
+          italic: false, align: "left", color: "#a8bcad", letterSpacing: 4, visible: true
+        }
+      ]
+    };
+
+    /** 供界面更新复用的关键 DOM 节点。 */
+    const elements = {
+      posterCanvas: document.querySelector("#posterCanvas"),
+      canvasShell: document.querySelector("#canvasShell"),
+      stageViewport: document.querySelector("#stageViewport"),
+      layersList: document.querySelector("#layersList"),
+      canvasWidth: document.querySelector("#canvasWidth"),
+      canvasHeight: document.querySelector("#canvasHeight"),
+      canvasInfo: document.querySelector("#canvasInfo"),
+      addLayerButton: document.querySelector("#addLayerButton"),
+      layerAddMenu: document.querySelector("#layerAddMenu"),
+      imageUploadInput: document.querySelector("#imageUploadInput"),
+      backgroundImageUploadInput: document.querySelector("#backgroundImageUploadInput"),
+      zoomRange: document.querySelector("#zoomRange"),
+      zoomValue: document.querySelector("#zoomValue"),
+      textContent: document.querySelector("#textContent"),
+      fontFamily: document.querySelector("#fontFamily"),
+      fontSize: document.querySelector("#fontSize"),
+      textColor: document.querySelector("#textColor"),
+      textColorValue: document.querySelector("#textColorValue"),
+      boldButton: document.querySelector("#boldButton"),
+      italicButton: document.querySelector("#italicButton"),
+      letterSpacing: document.querySelector("#letterSpacing"),
+      letterSpacingValue: document.querySelector("#letterSpacingValue"),
+      colorOne: document.querySelector("#backgroundColorOne"),
+      colorTwo: document.querySelector("#backgroundColorTwo"),
+      colorOneValue: document.querySelector("#colorOneValue"),
+      colorTwoValue: document.querySelector("#colorTwoValue"),
+      gradientDirection: document.querySelector("#gradientDirection"),
+      previewButton: document.querySelector("#previewButton"),
+      previewBadge: document.querySelector("#previewBadge"),
+      toast: document.querySelector("#toast"),
+      moveUp: document.querySelector("#moveLayerUpButton"),
+      moveDown: document.querySelector("#moveLayerDownButton")
+    };
+
+    /** 当前提示信息的自动隐藏计时器。 */
+    let toastTimer = 0;
+
+    /** 画布允许使用的最小显示比例，避免极大尺寸产生工作区滚动条。 */
+    const minimumZoom = 1;
+
+    /** 画布允许使用的最大显示比例，避免小画布被无意义放大。 */
+    const maximumZoom = 100;
+
+    /** 鼠标滚轮每次改变的显示比例百分点。 */
+    const wheelZoomStep = 2;
+
+    /** 用于测量文字排版尺寸的离屏画布。 */
+    const textMeasurementCanvas = document.createElement("canvas");
+
+    /** 离屏文字测量上下文；浏览器不支持时为 null。 */
+    const textMeasurementContext = textMeasurementCanvas.getContext("2d");
+
+    /**
+     * 返回当前画布的显示缩放比例。
+     * @returns {number} 设计像素到屏幕像素的换算比例
+     */
+    function getScale() {
+      return state.zoom / 100;
+    }
+
+    /**
+     * 根据文字内容与字体属性同步图层边界，并保留用户手动换行。
+     * @param {object} layer 待测量的文字图层，不得为空
+     * @returns {void}
+     */
+    function syncTextLayerBounds(layer) {
+      if (!textMeasurementContext || layer.type !== "text") return;
+      /** 与画布渲染一致的字体声明。 */
+      const fontDeclaration = `${layer.italic ? "italic " : ""}${layer.fontWeight} ${layer.fontSize}px "${layer.fontFamily}", sans-serif`;
+      /** 仅按用户显式回车拆分的文字行。 */
+      const lines = layer.content.replace(/\r/g, "").split("\n");
+      /** 与画布渲染一致的单行高度。 */
+      const lineHeight = layer.fontSize * 0.96;
+      /** 当前已测得的最大行宽。 */
+      let maximumLineWidth = 0;
+      textMeasurementContext.font = fontDeclaration;
+      // 1. 测量每一行：字体宽度叠加字符间距，禁止浏览器按旧边框自动折行。
+      for (const line of lines) {
+        /** 当前行按 Unicode 字符拆分后的数量。 */
+        const characterCount = Array.from(line).length;
+        /** 当前行包含字间距后的完整宽度。 */
+        const lineWidth = textMeasurementContext.measureText(line).width + Math.max(0, characterCount - 1) * layer.letterSpacing;
+        maximumLineWidth = Math.max(maximumLineWidth, lineWidth);
+      }
+      // 2. 同步边界：预留少量斜体悬垂空间，并确保空文字仍可被选中。
+      layer.width = Math.max(24, Math.ceil(maximumLineWidth + Math.max(2, layer.fontSize * 0.06)));
+      layer.height = Math.max(20, Math.ceil(Math.max(1, lines.length) * lineHeight));
+      // 3. 约束位置：尺寸变化后尽量让文字图层留在画布可操作区域内。
+      layer.x = clamp(layer.x, 0, Math.max(0, state.canvas.width - layer.width));
+      layer.y = clamp(layer.y, 0, Math.max(0, state.canvas.height - layer.height));
+    }
+
+    /**
+     * 同步全部文字图层的实际内容边界。
+     * @returns {void}
+     */
+    function syncAllTextLayerBounds() {
+      // 1. 逐层测量文字，图片图层保持用户设置的几何尺寸。
+      for (const layer of state.layers) {
+        if (layer.type === "text") syncTextLayerBounds(layer);
+      }
+    }
+
+    /**
+     * 等待指定文字图层的在线字体可用于精确测量。
+     * @param {object} layer 待加载字体的文字图层，不得为空
+     * @returns {Promise<void>} 字体可用或加载尝试结束后完成
+     */
+    async function waitForTextLayerFont(layer) {
+      /** 用于浏览器字体加载器的完整字体声明。 */
+      const fontDeclaration = `${layer.italic ? "italic " : ""}${layer.fontWeight} ${layer.fontSize}px "${layer.fontFamily}"`;
+      try {
+        // 1. 等待在线字体完成加载，避免使用回退字体得到错误边界。
+        await document.fonts.load(fontDeclaration, layer.content || "文字");
+      } catch {
+        // WHY: 字体网络加载失败时继续使用浏览器回退字体，保证编辑功能可用。
+      }
+    }
+
+    /**
+     * 页面字体资源就绪后重新测量全部文字并刷新界面。
+     * @returns {void}
+     */
+    function handleFontsReady() {
+      // 1. 使用最终字体修正文字边界，消除首屏回退字体产生的尺寸偏差。
+      syncAllTextLayerBounds();
+      render();
+    }
+
+    /**
+     * 计算当前画布在工作区内完整居中显示的最大比例。
+     * @returns {number} 不产生横向或纵向滚动条的整数缩放百分比
+     */
+    function getMaximumFittingZoom() {
+      /** 工作区当前计算样式，用于读取真实内边距。 */
+      const viewportStyle = window.getComputedStyle(elements.stageViewport);
+      /** 工作区左右内边距总和，单位像素。 */
+      const horizontalPadding = Number.parseFloat(viewportStyle.paddingLeft) + Number.parseFloat(viewportStyle.paddingRight);
+      /** 工作区上下内边距总和，单位像素。 */
+      const verticalPadding = Number.parseFloat(viewportStyle.paddingTop) + Number.parseFloat(viewportStyle.paddingBottom);
+      /** 扣除内边距后可用于展示画布的宽度。 */
+      const availableWidth = Math.max(1, elements.stageViewport.clientWidth - horizontalPadding);
+      /** 扣除内边距后可用于展示画布的高度。 */
+      const availableHeight = Math.max(1, elements.stageViewport.clientHeight - verticalPadding);
+      /** 画布完整适应可用宽度时的比例。 */
+      const widthScale = availableWidth / state.canvas.width;
+      /** 画布完整适应可用高度时的比例。 */
+      const heightScale = availableHeight / state.canvas.height;
+      // WHY: 向下取整并保留最小比例，可避免阴影和亚像素舍入触发浏览器滚动条。
+      return Math.max(minimumZoom, Math.min(maximumZoom, Math.floor(Math.min(widthScale, heightScale) * 100)));
+    }
+
+    /**
+     * 将画布恢复到工作区能够完整容纳的最大居中比例。
+     * @returns {void}
+     */
+    function fitCanvasToViewport() {
+      /** 当前工作区允许的最大显示比例。 */
+      const fittingZoom = getMaximumFittingZoom();
+      // 1. 更新缩放上限与状态，确保滑杆和滚轮都不会放大到溢出工作区。
+      elements.zoomRange.max = String(fittingZoom);
+      state.zoom = fittingZoom;
+      // 2. 刷新画布和全局控件，保持画布居中且比例显示一致。
+      renderCanvas();
+      renderGlobalControls();
+    }
+
+    /**
+     * 根据图层标识查找文字图层。
+     * @param {string|null} layerId 图层唯一标识；空值表示没有选中图层
+     * @returns {object|null} 匹配的图层；未找到时返回 null
+     */
+    function getLayer(layerId) {
+      // 1. 空值处理：没有标识时直接返回未选中状态。
+      if (!layerId) return null;
+      // 2. 图层查找：在当前海报图层中匹配唯一标识。
+      for (const layer of state.layers) {
+        if (layer.id === layerId) return layer;
+      }
+      return null;
+    }
+
+    /**
+     * 将数值限制在给定的闭区间中。
+     * @param {number} value 待限制数值
+     * @param {number} minimum 允许的最小值
+     * @param {number} maximum 允许的最大值
+     * @returns {number} 限制后的有效数值
+     */
+    function clamp(value, minimum, maximum) {
+      return Math.min(Math.max(value, minimum), maximum);
+    }
+
+    /**
+     * 生成当前背景对应的 CSS 背景值。
+     * @returns {string} 可直接用于元素背景样式的颜色或渐变
+     */
+    function getBackgroundCss() {
+      // 1. 图片背景：使用居中裁切规则完整覆盖画布。
+      if (state.background.type === "image" && state.background.src) {
+        return `url("${state.background.src}") center / cover no-repeat`;
+      }
+      // 2. 区分类型：纯色仅返回第一个颜色值。
+      if (state.background.type === "solid") return state.background.color;
+      // 3. 构建渐变：按用户选择的角度组合两个颜色。
+      return `linear-gradient(${state.background.angle}deg, ${state.background.color}, ${state.background.colorTwo})`;
+    }
+
+    /**
+     * 安全构建一个 SVG 图标节点。
+     * @param {"eye"|"eye-off"|"trash"} name 图标类型
+     * @returns {SVGSVGElement} 可插入按钮的 SVG 元素
+     */
+    function createIcon(name) {
+      /** SVG 命名空间，确保动态创建的图形可被浏览器正确识别。 */
+      const namespace = "http://www.w3.org/2000/svg";
+      /** 图标外层元素。 */
+      const svg = document.createElementNS(namespace, "svg");
+      svg.setAttribute("class", "icon");
+      svg.setAttribute("viewBox", "0 0 24 24");
+      svg.setAttribute("aria-hidden", "true");
+
+      // 1. 根据功能创建图形路径，避免把图标字符串注入页面。
+      if (name === "trash") {
+        /** 删除图标的主体路径。 */
+        const path = document.createElementNS(namespace, "path");
+        path.setAttribute("d", "M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6");
+        svg.append(path);
+      } else {
+        /** 显隐图标的眼睛轮廓。 */
+        const path = document.createElementNS(namespace, "path");
+        path.setAttribute("d", name === "eye" ? "M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" : "m3 3 18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 5.2A11.6 11.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.1M6.2 6.2C3.4 8 2 12 2 12s3.5 7 10 7a10.5 10.5 0 0 0 3.7-.7");
+        svg.append(path);
+        // 2. 为可见状态补充瞳孔，让操作含义更容易识别。
+        if (name === "eye") {
+          /** 可见状态图标的瞳孔。 */
+          const circle = document.createElementNS(namespace, "circle");
+          circle.setAttribute("cx", "12");
+          circle.setAttribute("cy", "12");
+          circle.setAttribute("r", "2.5");
+          svg.append(circle);
+        }
+      }
+      return svg;
+    }
+
+    /**
+     * 将缩放手柄放在图层当前可见区域的右下角。
+     *
+     * @param {HTMLElement} resizeHandle 待定位的缩放手柄
+     * @param {Object} layer 手柄所属的文字或图片图层
+     * @param {number} scale 当前画布显示比例
+     * @returns {void}
+     */
+    function positionResizeHandle(resizeHandle, layer, scale) {
+      /** 缩放手柄的可视尺寸，单位为屏幕像素。 */
+      const handleSize = 12;
+      /** 手柄与画布裁切边缘的安全间距，避免边框像素被隐藏。 */
+      const canvasEdgeInset = 2;
+      /** 图层右侧是否超出画布范围。 */
+      const isClippedHorizontally = layer.x + layer.width > state.canvas.width;
+      /** 图层底部是否超出画布范围。 */
+      const isClippedVertically = layer.y + layer.height > state.canvas.height;
+
+      // 1. 恢复默认右下角位置，确保图层重新进入画布后手柄正常跟随边框。
+      resizeHandle.style.left = "";
+      resizeHandle.style.top = "";
+      resizeHandle.style.right = "";
+      resizeHandle.style.bottom = "";
+
+      // 2. 超出画布时将对应方向吸附到可见边缘内，避免手柄被画布裁切。
+      if (isClippedHorizontally) {
+        /** 图层在画布内仍可见的宽度，单位为设计像素。 */
+        const visibleWidth = Math.max(0, state.canvas.width - layer.x);
+        resizeHandle.style.left = `${Math.max(0, visibleWidth * scale - handleSize - canvasEdgeInset)}px`;
+        resizeHandle.style.right = "auto";
+      }
+      if (isClippedVertically) {
+        /** 图层在画布内仍可见的高度，单位为设计像素。 */
+        const visibleHeight = Math.max(0, state.canvas.height - layer.y);
+        resizeHandle.style.top = `${Math.max(0, visibleHeight * scale - handleSize - canvasEdgeInset)}px`;
+        resizeHandle.style.bottom = "auto";
+      }
+    }
+
+    /**
+     * 重新绘制中央海报画布及全部可见图层。
+     * @returns {void}
+     */
+    function renderCanvas() {
+      /** 当前显示比例。 */
+      const scale = getScale();
+      // 1. 更新画布外观：同步尺寸、背景和预览状态。
+      elements.canvasShell.style.width = `${state.canvas.width * scale}px`;
+      elements.canvasShell.style.height = `${state.canvas.height * scale}px`;
+      elements.posterCanvas.style.background = getBackgroundCss();
+      elements.posterCanvas.replaceChildren();
+
+      // 2. 绘制图层：按照数组顺序由底向顶叠放文字和图片。
+      for (let index = 0; index < state.layers.length; index += 1) {
+        /** 当前待绘制的文字或图片图层。 */
+        const layer = state.layers[index];
+        if (!layer.visible) continue;
+        /** 图层在画布中的交互容器。 */
+        const layerElement = document.createElement("div");
+        /** 图层的实际文字或图片内容节点。 */
+        const contentElement = layer.type === "image" ? document.createElement("img") : document.createElement("div");
+        /** 选中图层右下角的缩放控制点。 */
+        const resizeHandle = document.createElement("span");
+
+        layerElement.className = "canvas-layer";
+        if (layer.id === state.selectedLayerId && !state.preview) layerElement.classList.add("selected");
+        if (layer.id === state.editingLayerId && !state.preview) layerElement.classList.add("editing");
+        if (state.preview) layerElement.classList.add("preview-mode");
+        layerElement.dataset.layerId = layer.id;
+        layerElement.style.left = `${layer.x * scale}px`;
+        layerElement.style.top = `${layer.y * scale}px`;
+        layerElement.style.width = `${layer.width * scale}px`;
+        layerElement.style.height = `${layer.height * scale}px`;
+        layerElement.style.zIndex = String(index + 1);
+
+        // 3. 根据图层类型配置内容：图片保持铺满，文字保留全部排版属性。
+        if (layer.type === "image") {
+          contentElement.className = "image-content";
+          contentElement.src = layer.src;
+          contentElement.alt = layer.name;
+          contentElement.draggable = false;
+        } else {
+          layerElement.style.color = layer.color;
+          layerElement.style.fontFamily = `"${layer.fontFamily}", sans-serif`;
+          layerElement.style.fontSize = `${layer.fontSize * scale}px`;
+          layerElement.style.fontWeight = String(layer.fontWeight);
+          layerElement.style.fontStyle = layer.italic ? "italic" : "normal";
+          layerElement.style.letterSpacing = `${layer.letterSpacing * scale}px`;
+          layerElement.style.textAlign = layer.align;
+          contentElement.className = "text-content";
+          contentElement.textContent = layer.content;
+          if (layer.id === state.editingLayerId && !state.preview) {
+            contentElement.contentEditable = "plaintext-only";
+            contentElement.setAttribute("role", "textbox");
+            contentElement.setAttribute("aria-label", `直接编辑：${layer.name}`);
+            contentElement.setAttribute("aria-multiline", "true");
+            contentElement.spellcheck = false;
+          }
+        }
+        resizeHandle.className = "resize-handle";
+        resizeHandle.dataset.action = "resize";
+        resizeHandle.setAttribute("aria-hidden", "true");
+        positionResizeHandle(resizeHandle, layer, scale);
+        layerElement.append(contentElement, resizeHandle);
+        elements.posterCanvas.append(layerElement);
+      }
+    }
+
+    /**
+     * 重新绘制右侧图层列表与层级按钮状态。
+     * @returns {void}
+     */
+    function renderLayers() {
+      // 1. 清空旧列表：避免状态更新后残留重复节点。
+      elements.layersList.replaceChildren();
+      // 2. 倒序绘制：面板顶部代表视觉上最靠前的图层。
+      for (let index = state.layers.length - 1; index >= 0; index -= 1) {
+        /** 当前图层数据。 */
+        const layer = state.layers[index];
+        /** 图层列表行。 */
+        const row = document.createElement("div");
+        /** 图层显隐按钮。 */
+        const visibilityButton = document.createElement("button");
+        /** 图层类型缩略标识。 */
+        const thumbnail = document.createElement("div");
+        /** 图层名称与内容摘要容器。 */
+        const copy = document.createElement("div");
+        /** 图层业务名称。 */
+        const title = document.createElement("strong");
+        /** 图层文字摘要。 */
+        const summary = document.createElement("small");
+        /** 图层删除按钮。 */
+        const deleteButton = document.createElement("button");
+
+        row.className = "layer-row";
+        if (layer.id === state.selectedLayerId) row.classList.add("active");
+        if (!layer.visible) row.classList.add("dimmed");
+        row.dataset.layerId = layer.id;
+        row.tabIndex = 0;
+        row.setAttribute("role", "button");
+        row.setAttribute("aria-label", `选择图层：${layer.name}`);
+
+        visibilityButton.className = "layer-visibility";
+        visibilityButton.type = "button";
+        visibilityButton.dataset.action = "visibility";
+        visibilityButton.setAttribute("aria-label", layer.visible ? "隐藏图层" : "显示图层");
+        visibilityButton.append(createIcon(layer.visible ? "eye" : "eye-off"));
+        thumbnail.className = "layer-thumb";
+        if (layer.type === "image") {
+          /** 图片图层在面板中的内容缩略图。 */
+          const thumbnailImage = document.createElement("img");
+          thumbnail.classList.add("image-thumb");
+          thumbnailImage.src = layer.src;
+          thumbnailImage.alt = "";
+          thumbnail.append(thumbnailImage);
+        } else {
+          thumbnail.textContent = "T";
+        }
+        copy.className = "layer-copy";
+        title.textContent = layer.name;
+        summary.textContent = layer.type === "image"
+          ? `${Math.round(layer.width)} × ${Math.round(layer.height)} · 图片`
+          : layer.content.replace(/\n/g, " ") || "空文字";
+        copy.append(title, summary);
+        deleteButton.className = "layer-delete";
+        deleteButton.type = "button";
+        deleteButton.dataset.action = "delete";
+        deleteButton.setAttribute("aria-label", `删除图层：${layer.name}`);
+        deleteButton.append(createIcon("trash"));
+        row.append(visibilityButton, thumbnail, copy, deleteButton);
+        elements.layersList.append(row);
+      }
+
+      // 3. 添加固定背景层：背景不参与删除和排序。
+      /** 固定背景的列表行。 */
+      const backgroundRow = document.createElement("div");
+      backgroundRow.className = "layer-row background-row";
+      backgroundRow.style.setProperty("--current-background", getBackgroundCss());
+      backgroundRow.innerHTML = '<span></span><div class="layer-thumb background-thumb"></div><div class="layer-copy"><strong>背景</strong><small>固定底层</small></div><span></span>';
+      elements.layersList.append(backgroundRow);
+
+      // 4. 更新层级按钮：到达最上或最下时禁用对应操作。
+      /** 当前选中图层的数组位置。 */
+      const selectedIndex = state.layers.findIndex(findSelectedLayerIndex);
+      elements.moveUp.disabled = selectedIndex < 0 || selectedIndex === state.layers.length - 1;
+      elements.moveDown.disabled = selectedIndex <= 0;
+    }
+
+    /**
+     * 判断图层是否为当前选中项，供数组查找复用。
+     * @param {object} layer 待判断的文字或图片图层
+     * @returns {boolean} 当前图层是否被选中
+     */
+    function findSelectedLayerIndex(layer) {
+      return layer.id === state.selectedLayerId;
+    }
+
+    /**
+     * 将选中图层数据同步到左侧文字属性编辑器。
+     * @returns {void}
+     */
+    function renderTextEditor() {
+      /** 当前选中且允许编辑属性的文字图层。 */
+      const selectedLayer = getLayer(state.selectedLayerId);
+      /** 图片图层选中时为空，避免文字控件写入无关属性。 */
+      const layer = selectedLayer?.type === "text" ? selectedLayer : null;
+      /** 文字编辑器中所有可编辑控件。 */
+      const controls = document.querySelectorAll("#textEditor input, #textEditor select, #textEditor textarea, #textEditor button");
+      // 1. 同步可用状态：未选择图层时禁用文字属性。
+      for (const control of controls) control.disabled = !layer;
+      if (!layer) {
+        elements.textContent.value = "";
+        elements.boldButton.classList.remove("active");
+        elements.italicButton.classList.remove("active");
+        /** 所有需要清除状态的文字对齐按钮。 */
+        const alignmentButtons = document.querySelectorAll("[data-align]");
+        for (const button of alignmentButtons) button.classList.remove("active");
+        return;
+      }
+      // 2. 回填属性：确保面板始终反映选中图层的真实状态。
+      elements.textContent.value = layer.content;
+      elements.fontFamily.value = layer.fontFamily;
+      elements.fontSize.value = String(Math.round(layer.fontSize));
+      elements.textColor.value = layer.color;
+      elements.textColorValue.textContent = layer.color.toUpperCase();
+      elements.boldButton.classList.toggle("active", layer.fontWeight >= 700);
+      elements.italicButton.classList.toggle("active", layer.italic);
+      elements.letterSpacing.value = String(layer.letterSpacing);
+      elements.letterSpacingValue.textContent = String(layer.letterSpacing);
+      /** 所有文字对齐按钮。 */
+      const alignmentButtons = document.querySelectorAll("[data-align]");
+      for (const button of alignmentButtons) button.classList.toggle("active", button.dataset.align === layer.align);
+    }
+
+    /**
+     * 同步画布尺寸、缩放、色值与比例按钮等全局界面状态。
+     * @returns {void}
+     */
+    function renderGlobalControls() {
+      // 1. 同步尺寸与缩放显示。
+      /** 当前画布在工作区中的最大适配比例。 */
+      const fittingZoom = getMaximumFittingZoom();
+      elements.zoomRange.min = String(minimumZoom);
+      elements.zoomRange.max = String(fittingZoom);
+      elements.canvasWidth.value = String(state.canvas.width);
+      elements.canvasHeight.value = String(state.canvas.height);
+      elements.canvasInfo.textContent = `${state.canvas.width} × ${state.canvas.height}`;
+      elements.zoomRange.value = String(state.zoom);
+      elements.zoomValue.textContent = `${state.zoom}%`;
+      elements.colorOne.value = state.background.color;
+      elements.colorTwo.value = state.background.colorTwo;
+      elements.colorOneValue.textContent = state.background.color.toUpperCase();
+      elements.colorTwoValue.textContent = state.background.colorTwo.toUpperCase();
+      elements.previewButton.classList.toggle("primary", state.preview);
+      elements.previewButton.setAttribute("aria-pressed", String(state.preview));
+      elements.previewBadge.classList.toggle("visible", state.preview);
+
+      // 2. 匹配常见画布比例，未匹配时保持自定义状态。
+      /** 所有预设比例按钮。 */
+      const ratioButtons = document.querySelectorAll(".ratio-button");
+      for (const button of ratioButtons) {
+        /** 预设按钮是否与当前画布尺寸完全一致。 */
+        const isActive = Number(button.dataset.width) === state.canvas.width && Number(button.dataset.height) === state.canvas.height;
+        button.classList.toggle("active", isActive);
+      }
+    }
+
+    /**
+     * 完整刷新编辑器的可视状态。
+     * @returns {void}
+     */
+    function render() {
+      // 1. 绘制工作区与图层结构。
+      renderCanvas();
+      renderLayers();
+      // 2. 同步两侧属性控件。
+      renderTextEditor();
+      renderGlobalControls();
+    }
+
+    /**
+     * 显示一条会自动消失的操作反馈。
+     * @param {string} message 面向用户的简短反馈文本
+     * @returns {void}
+     */
+    function showToast(message) {
+      // 1. 替换提示内容并显示。
+      window.clearTimeout(toastTimer);
+      elements.toast.textContent = message;
+      elements.toast.classList.add("visible");
+      // 2. 延迟隐藏：给用户足够时间确认操作结果。
+      toastTimer = window.setTimeout(hideToast, 1800);
+    }
+
+    /**
+     * 隐藏当前操作反馈。
+     * @returns {void}
+     */
+    function hideToast() {
+      elements.toast.classList.remove("visible");
+    }
+
+    /**
+     * 选择一个文字图层并刷新相关控件。
+     * @param {string} layerId 待选中的图层唯一标识
+     * @returns {void}
+     */
+    function selectLayer(layerId) {
+      state.editingLayerId = null;
+      state.selectedLayerId = layerId;
+      render();
+    }
+
+    /**
+     * 将输入光标放到可编辑文字的末尾。
+     * @param {HTMLElement} textElement 已进入编辑状态的文字节点，不得为空
+     * @returns {void}
+     */
+    function placeCaretAtEnd(textElement) {
+      /** 当前浏览器的文字选择对象。 */
+      const selection = window.getSelection();
+      /** 覆盖文字节点全部内容的光标范围。 */
+      const range = document.createRange();
+      if (!selection) return;
+      // 1. 将折叠范围放到文字内容末尾。
+      range.selectNodeContents(textElement);
+      range.collapse(false);
+      // 2. 替换旧选择，使用户可立即继续输入。
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    /**
+     * 让指定画布文字进入原位编辑状态。
+     * @param {string} layerId 待编辑的文字图层唯一标识
+     * @returns {void}
+     */
+    function startInlineEditing(layerId) {
+      /** 待直接编辑的文字图层。 */
+      const layer = getLayer(layerId);
+      if (!layer || layer.type !== "text" || !layer.visible || state.preview) return;
+      // 1. 切换编辑状态并绘制可输入的文字节点。
+      state.selectedLayerId = layer.id;
+      state.editingLayerId = layer.id;
+      state.interaction = null;
+      render();
+      // 2. 聚焦当前图层并把光标放在末尾，支持立即修改。
+      /** 新绘制的可编辑文字节点。 */
+      const textElement = elements.posterCanvas.querySelector(`.canvas-layer[data-layer-id="${layer.id}"] .text-content`);
+      if (!textElement) return;
+      textElement.focus({ preventScroll: true });
+      placeCaretAtEnd(textElement);
+    }
+
+    /**
+     * 结束画布原位编辑并提交最终文字内容。
+     * @param {HTMLElement|null} textElement 即将结束编辑的文字节点；可空
+     * @returns {void}
+     */
+    function finishInlineEditing(textElement) {
+      /** 当前正在编辑的文字图层。 */
+      const layer = getLayer(state.editingLayerId);
+      if (!layer) return;
+      // 1. 提交最终内容：保留用户输入的换行并移除浏览器回车差异。
+      if (textElement) layer.content = textElement.innerText.replace(/\r/g, "");
+      // 2. 同步实际文字边界，确保编辑后的选中框紧贴内容。
+      syncTextLayerBounds(layer);
+      // 3. 退出编辑态并同步两侧界面。
+      state.editingLayerId = null;
+      render();
+    }
+
+    /**
+     * 新增一个居中放置的默认文字图层。
+     * @returns {void}
+     */
+    function addTextLayer() {
+      /** 新图层的顺序编号，用于名称和唯一标识。 */
+      const layerNumber = state.nextLayerNumber;
+      /** 新图层的默认宽度，窄画布会自动留出左右边距。 */
+      const width = Math.min(520, state.canvas.width - 80);
+      /** 新文字图层的完整数据。 */
+      const layer = {
+        id: `text-layer-${Date.now()}-${layerNumber}`,
+        type: "text",
+        name: `新文字 ${layerNumber}`,
+        content: "编辑你的想法",
+        x: Math.max(40, (state.canvas.width - width) / 2),
+        y: Math.max(40, (state.canvas.height - 90) / 2),
+        width,
+        height: 90,
+        fontSize: 64,
+        fontFamily: "Noto Sans SC",
+        fontWeight: 700,
+        italic: false,
+        align: "center",
+        color: "#ffffff",
+        letterSpacing: 0,
+        visible: true
+      };
+      // 1. 按默认字体和内容计算紧凑边界，避免新增文字沿用固定尺寸。
+      syncTextLayerBounds(layer);
+      layer.x = Math.max(0, (state.canvas.width - layer.width) / 2);
+      layer.y = Math.max(0, (state.canvas.height - layer.height) / 2);
+      // 2. 写入新图层并提升后续编号。
+      state.layers.push(layer);
+      state.nextLayerNumber += 1;
+      state.selectedLayerId = layer.id;
+      // 3. 刷新并聚焦内容输入，缩短新增后的编辑路径。
+      render();
+      elements.textContent.focus();
+      elements.textContent.select();
+      showToast("已新增文字图层");
+    }
+
+    /**
+     * 将浏览器图片地址加载为可读取尺寸和导出的图像对象。
+     * @param {string} source 图片数据地址或对象地址，不得为空
+     * @returns {Promise<HTMLImageElement>} 图片加载成功后的元素
+     */
+    function loadImageSource(source) {
+      return new Promise(loadImageExecutor);
+
+      /**
+       * 执行图片异步加载并反馈成功或失败。
+       * @param {(image:HTMLImageElement)=>void} resolve 图片加载成功回调
+       * @param {(error:Error)=>void} reject 图片加载失败回调
+       * @returns {void}
+       */
+      function loadImageExecutor(resolve, reject) {
+        /** 用于解析尺寸和参与导出的离屏图片元素。 */
+        const image = new Image();
+
+        /**
+         * 图片加载完成后返回可用元素。
+         * @returns {void}
+         */
+        function handleImageLoad() {
+          resolve(image);
+        }
+
+        /**
+         * 图片无法解码时返回明确错误。
+         * @returns {void}
+         */
+        function handleImageError() {
+          reject(new Error("图片无法读取"));
+        }
+
+        // 1. 绑定一次性结果回调，避免重复触发加载状态。
+        image.onload = handleImageLoad;
+        image.onerror = handleImageError;
+        // 2. 开始读取本地图片对象地址。
+        image.src = source;
+      }
+    }
+
+    /**
+     * 新增一个按画布自适应并居中放置的图片图层。
+     * @param {string} fileName 用户选择的图片文件名，不得为空
+     * @param {string} source 图片对象地址，不得为空
+     * @param {number} naturalWidth 图片原始宽度，必须大于 0
+     * @param {number} naturalHeight 图片原始高度，必须大于 0
+     * @returns {void}
+     */
+    function addImageLayer(fileName, source, naturalWidth, naturalHeight) {
+      /** 图片在画布中允许占用的最大宽度。 */
+      const maximumWidth = state.canvas.width * 0.62;
+      /** 图片在画布中允许占用的最大高度。 */
+      const maximumHeight = state.canvas.height * 0.62;
+      /** 保持原始比例且不放大小图的适配系数。 */
+      const fitScale = Math.min(1, maximumWidth / naturalWidth, maximumHeight / naturalHeight);
+      /** 图片图层的初始宽度。 */
+      const width = Math.max(40, naturalWidth * fitScale);
+      /** 图片图层的初始高度。 */
+      const height = Math.max(40, naturalHeight * fitScale);
+      /** 图片文件名中不含扩展名的可读部分。 */
+      const baseName = fileName.replace(/\.[^.]+$/, "").trim();
+      /** 图片图层顺序编号，用于兜底名称与唯一标识。 */
+      const imageNumber = state.nextImageNumber;
+      /** 新图片图层的完整数据。 */
+      const layer = {
+        id: `image-layer-${Date.now()}-${imageNumber}`,
+        type: "image",
+        name: baseName || `图片 ${imageNumber}`,
+        src: source,
+        x: Math.max(0, (state.canvas.width - width) / 2),
+        y: Math.max(0, (state.canvas.height - height) / 2),
+        width,
+        height,
+        visible: true
+      };
+      // 1. 写入新图片图层并选中，保证用户可立即调整位置。
+      state.layers.push(layer);
+      state.nextImageNumber += 1;
+      state.selectedLayerId = layer.id;
+      state.editingLayerId = null;
+      // 2. 刷新画布与图层面板并反馈上传结果。
+      render();
+      showToast("图片已添加到画布");
+    }
+
+    /**
+     * 处理本地图片选择并创建图片图层。
+     * @param {Event} event 文件输入框的变更事件
+     * @returns {Promise<void>} 图片读取和图层创建完成后结束
+     */
+    async function handleImageUpload(event) {
+      /** 用户本次选择的第一个图片文件。 */
+      const file = event.target.files?.[0] || null;
+      /** 单张图片允许的最大体积，固定为 10 MB。 */
+      const maximumFileBytes = 10 * 1024 * 1024;
+      if (!file) return;
+      // 1. 校验文件：仅接收浏览器可识别且体积合理的图片。
+      if (!file.type.startsWith("image/")) {
+        showToast("请选择有效的图片文件");
+        event.target.value = "";
+        return;
+      }
+      if (file.size > maximumFileBytes) {
+        showToast("图片大小不能超过 10 MB");
+        event.target.value = "";
+        return;
+      }
+      /** 当前图片文件的临时浏览器对象地址。 */
+      const source = URL.createObjectURL(file);
+      // 2. 读取尺寸并创建图层；无法解码时释放临时地址。
+      try {
+        /** 已成功解析的本地图片。 */
+        const image = await loadImageSource(source);
+        addImageLayer(file.name, source, image.naturalWidth, image.naturalHeight);
+      } catch {
+        URL.revokeObjectURL(source);
+        showToast("图片无法读取，请更换文件");
+      }
+      // 3. 清空选择值，使同一文件也可以再次添加。
+      event.target.value = "";
+    }
+
+    /**
+     * 切换右侧新增图层类型菜单。
+     * @returns {void}
+     */
+    function toggleLayerAddMenu() {
+      /** 类型菜单切换后是否应该处于展开状态。 */
+      const shouldOpen = elements.layerAddMenu.hidden;
+      elements.layerAddMenu.hidden = !shouldOpen;
+      elements.addLayerButton.setAttribute("aria-expanded", String(shouldOpen));
+    }
+
+    /**
+     * 关闭右侧新增图层类型菜单。
+     * @returns {void}
+     */
+    function closeLayerAddMenu() {
+      elements.layerAddMenu.hidden = true;
+      elements.addLayerButton.setAttribute("aria-expanded", "false");
+    }
+
+    /**
+     * 从类型菜单新增文字图层。
+     * @returns {void}
+     */
+    function handleAddTextFromMenu() {
+      closeLayerAddMenu();
+      addTextLayer();
+    }
+
+    /**
+     * 从类型菜单打开本地图片选择器。
+     * @returns {void}
+     */
+    function handleChooseImage() {
+      closeLayerAddMenu();
+      elements.imageUploadInput.click();
+    }
+
+    /**
+     * 删除指定文字或图片图层。
+     * @param {string} layerId 待删除的图层唯一标识
+     * @returns {void}
+     */
+    function deleteLayer(layerId) {
+      /** 待删除图层在数组中的位置。 */
+      const index = state.layers.findIndex(findLayerById);
+      /** 被删除图层的名称，用于反馈。 */
+      const deletedName = index >= 0 ? state.layers[index].name : "图层";
+
+      /**
+       * 判断数组项是否为待删除图层。
+       * @param {object} layer 待比较的文字或图片图层
+       * @returns {boolean} 是否匹配待删除标识
+       */
+      function findLayerById(layer) {
+        return layer.id === layerId;
+      }
+
+      // 1. 校验目标：不存在的图层不执行删除。
+      if (index < 0) return;
+      // 2. 删除并选择邻近图层，保持编辑上下文连续。
+      /** 即将删除的图层数据。 */
+      const deletedLayer = state.layers[index];
+      state.layers.splice(index, 1);
+      if (deletedLayer.type === "image" && deletedLayer.src.startsWith("blob:")) URL.revokeObjectURL(deletedLayer.src);
+      if (state.editingLayerId === layerId) state.editingLayerId = null;
+      if (state.selectedLayerId === layerId) {
+        /** 删除后最接近原位置的图层。 */
+        const nextLayer = state.layers[Math.min(index, state.layers.length - 1)] || null;
+        state.selectedLayerId = nextLayer ? nextLayer.id : null;
+      }
+      render();
+      showToast(`已删除「${deletedName}」`);
+    }
+
+    /**
+     * 应用新的画布尺寸，并将越界图层拉回可视范围。
+     * @param {number} width 新画布宽度，范围 240 至 4000 像素
+     * @param {number} height 新画布高度，范围 240 至 4000 像素
+     * @returns {void}
+     */
+    function applyCanvasSize(width, height) {
+      // 1. 校验范围：避免异常尺寸造成浏览器卡顿或无法编辑。
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 240 || height < 240 || width > 4000 || height > 4000) {
+        showToast("画布尺寸需在 240–4000 px 之间");
+        return;
+      }
+      // 2. 更新尺寸并约束图层，使现有内容仍可操作。
+      state.canvas.width = Math.round(width);
+      state.canvas.height = Math.round(height);
+      for (const layer of state.layers) {
+        // WHY: 图片必须同步缩放宽高，避免画布变小时破坏原始比例。
+        if (layer.type === "image") {
+          /** 图片适应新画布边界的等比缩放系数。 */
+          const fitScale = Math.min(1, state.canvas.width / layer.width, state.canvas.height / layer.height);
+          layer.width *= fitScale;
+          layer.height *= fitScale;
+        } else {
+          // WHY: 文字必须保持手动换行语义，画布变化时重新测量而不是压窄后自动折行。
+          syncTextLayerBounds(layer);
+        }
+        layer.x = clamp(layer.x, 0, Math.max(0, state.canvas.width - layer.width));
+        layer.y = clamp(layer.y, 0, Math.max(0, state.canvas.height - layer.height));
+      }
+      // 3. 按新尺寸重新计算最大适配比例，使画布完整居中且不产生滚动条。
+      state.zoom = getMaximumFittingZoom();
+      render();
+      showToast(`画布已更新为 ${state.canvas.width} × ${state.canvas.height}`);
+    }
+
+    /**
+     * 处理常见比例按钮点击。
+     * @param {MouseEvent} event 比例区域的点击事件
+     * @returns {void}
+     */
+    function handleRatioClick(event) {
+      /** 用户点击或点击到其内部的比例按钮。 */
+      const button = event.target.closest(".ratio-button");
+      if (!button) return;
+      applyCanvasSize(Number(button.dataset.width), Number(button.dataset.height));
+    }
+
+    /**
+     * 从自定义尺寸输入框读取并应用画布尺寸。
+     * @returns {void}
+     */
+    function handleApplyCustomSize() {
+      applyCanvasSize(Number(elements.canvasWidth.value), Number(elements.canvasHeight.value));
+    }
+
+    /**
+     * 点击新增图层区域外部时关闭类型菜单。
+     * @param {PointerEvent} event 页面级指针按下事件
+     * @returns {void}
+     */
+    function handleDocumentPointerDown(event) {
+      /** 指针是否落在新增图层入口或类型菜单内部。 */
+      const isInsideLayerAdd = Boolean(event.target.closest("#layerAddControl"));
+      if (!elements.layerAddMenu.hidden && !isInsideLayerAdd) closeLayerAddMenu();
+    }
+
+    /**
+     * 释放当前图片背景使用的临时浏览器地址。
+     * @returns {void}
+     */
+    function releaseCurrentBackgroundImage() {
+      // 1. 仅释放本地上传产生的对象地址，避免影响普通颜色背景。
+      if (state.background.type === "image" && state.background.src?.startsWith("blob:")) {
+        URL.revokeObjectURL(state.background.src);
+      }
+      // 2. 清理图片引用，防止后续渲染误用已释放地址。
+      state.background.src = null;
+      state.background.imageName = null;
+    }
+
+    /**
+     * 应用预制背景色板。
+     * @param {MouseEvent} event 色板区域的点击事件
+     * @returns {void}
+     */
+    function handleBackgroundSwatch(event) {
+      /** 用户点击的背景色板按钮。 */
+      const swatch = event.target.closest(".swatch");
+      if (!swatch) return;
+      // 1. 上传入口：打开本地图片选择器，成功读取后再切换背景。
+      if (swatch.dataset.action === "upload-background") {
+        elements.backgroundImageUploadInput.click();
+        return;
+      }
+      // 2. 清理旧图片并写入色板数据：纯色和渐变共用统一背景模型。
+      releaseCurrentBackgroundImage();
+      state.background.type = swatch.dataset.type;
+      state.background.color = swatch.dataset.color;
+      state.background.colorTwo = swatch.dataset.colorTwo || swatch.dataset.color;
+      state.background.angle = Number(swatch.dataset.angle || 0);
+      // 3. 标记当前色板并刷新画布。
+      /** 所有预制背景色板。 */
+      const swatches = document.querySelectorAll(".swatch");
+      for (const item of swatches) item.classList.toggle("active", item === swatch);
+      elements.gradientDirection.value = state.background.type === "solid" ? "solid" : String(state.background.angle);
+      render();
+    }
+
+    /**
+     * 从自定义背景控件读取颜色与渐变方向并应用。
+     * @returns {void}
+     */
+    function handleApplyCustomBackground() {
+      /** 背景类型或渐变角度的选择值。 */
+      const direction = elements.gradientDirection.value;
+      // 1. 清理旧图片并写入自定义背景属性。
+      releaseCurrentBackgroundImage();
+      state.background.type = direction === "solid" ? "solid" : "gradient";
+      state.background.color = elements.colorOne.value;
+      state.background.colorTwo = elements.colorTwo.value;
+      state.background.angle = direction === "solid" ? 0 : Number(direction);
+      // 2. 清除预制选中状态，表达当前为自定义方案。
+      /** 所有预制背景色板。 */
+      const swatches = document.querySelectorAll(".swatch");
+      for (const swatch of swatches) swatch.classList.remove("active");
+      render();
+      showToast("自定义背景已应用");
+    }
+
+    /**
+     * 即时更新背景颜色输入旁的十六进制文本。
+     * @param {InputEvent} event 颜色选择器输入事件
+     * @returns {void}
+     */
+    function handleBackgroundColorInput(event) {
+      // 1. 识别颜色来源并更新对应文本。
+      if (event.target === elements.colorOne) elements.colorOneValue.textContent = event.target.value.toUpperCase();
+      if (event.target === elements.colorTwo) elements.colorTwoValue.textContent = event.target.value.toUpperCase();
+    }
+
+    /**
+     * 处理本地背景图片选择并应用为覆盖画布的背景。
+     * @param {Event} event 背景图片文件输入框的变更事件
+     * @returns {Promise<void>} 图片校验、读取和背景更新完成后结束
+     */
+    async function handleBackgroundImageUpload(event) {
+      /** 用户本次选择的背景图片文件。 */
+      const file = event.target.files?.[0] || null;
+      /** 背景图片允许的最大体积，固定为 15 MB。 */
+      const maximumFileBytes = 15 * 1024 * 1024;
+      if (!file) return;
+      // 1. 校验文件：仅接收浏览器可识别且体积合理的图片。
+      if (!file.type.startsWith("image/")) {
+        showToast("请选择有效的背景图片");
+        event.target.value = "";
+        return;
+      }
+      if (file.size > maximumFileBytes) {
+        showToast("背景图片不能超过 15 MB");
+        event.target.value = "";
+        return;
+      }
+      /** 当前背景图片文件的临时浏览器对象地址。 */
+      const source = URL.createObjectURL(file);
+      // 2. 预先解码图片，只有可正常显示时才替换现有背景。
+      try {
+        await loadImageSource(source);
+        releaseCurrentBackgroundImage();
+        state.background.type = "image";
+        state.background.src = source;
+        state.background.imageName = file.name;
+        /** 所有背景预设按钮。 */
+        const swatches = document.querySelectorAll(".swatch");
+        for (const swatch of swatches) swatch.classList.toggle("active", swatch.dataset.action === "upload-background");
+        render();
+        showToast("背景图片已应用");
+      } catch {
+        URL.revokeObjectURL(source);
+        showToast("背景图片无法读取，请更换文件");
+      }
+      // 3. 清空选择值，使同一图片也可以再次上传。
+      event.target.value = "";
+    }
+
+    /**
+     * 处理文字内容变化并即时刷新画布。
+     * @returns {void}
+     */
+    function handleTextContentInput() {
+      /** 当前选中的文字图层。 */
+      const layer = getLayer(state.selectedLayerId);
+      if (!layer || layer.type !== "text") return;
+      // 1. 更新内容并重新测量边界，保证输入与选中框同步变化。
+      layer.content = elements.textContent.value;
+      syncTextLayerBounds(layer);
+      // 2. 刷新画布和图层摘要，保持两侧信息一致。
+      renderCanvas();
+      renderLayers();
+    }
+
+    /**
+     * 处理字体选择变化。
+     * @returns {Promise<void>} 字体加载、边界测量和界面刷新完成后结束
+     */
+    async function handleFontFamilyChange() {
+      /** 当前选中的文字图层。 */
+      const layer = getLayer(state.selectedLayerId);
+      if (!layer || layer.type !== "text") return;
+      // 1. 立即应用字体并使用当前可用字形测量，保证操作反馈不被网络阻塞。
+      layer.fontFamily = elements.fontFamily.value;
+      syncTextLayerBounds(layer);
+      render();
+      // 2. 等待对应在线字体可用于精确测量。
+      await waitForTextLayerFont(layer);
+      // 3. 使用最终字形无感校正文字边界，避免字体下载后边框出现偏差。
+      syncTextLayerBounds(layer);
+      render();
+    }
+
+    /**
+     * 处理字号输入并限制在可用范围。
+     * @returns {void}
+     */
+    function handleFontSizeInput() {
+      /** 当前选中的文字图层。 */
+      const layer = getLayer(state.selectedLayerId);
+      if (!layer || layer.type !== "text") return;
+      // 1. 更新字号并同步边界，使选中框跟随文字实际大小。
+      layer.fontSize = clamp(Number(elements.fontSize.value) || 12, 12, 320);
+      syncTextLayerBounds(layer);
+      // 2. 刷新画布与属性值，展示经过范围约束的最终字号。
+      render();
+    }
+
+    /**
+     * 处理文字颜色输入。
+     * @returns {void}
+     */
+    function handleTextColorInput() {
+      /** 当前选中的文字图层。 */
+      const layer = getLayer(state.selectedLayerId);
+      if (!layer || layer.type !== "text") return;
+      layer.color = elements.textColor.value;
+      elements.textColorValue.textContent = layer.color.toUpperCase();
+      renderCanvas();
+    }
+
+    /**
+     * 切换选中文字的粗体状态。
+     * @returns {void}
+     */
+    function handleBoldToggle() {
+      /** 当前选中的文字图层。 */
+      const layer = getLayer(state.selectedLayerId);
+      if (!layer || layer.type !== "text") return;
+      // 1. 切换字重并重新测量可能变化的文字宽度。
+      layer.fontWeight = layer.fontWeight >= 700 ? 500 : 700;
+      syncTextLayerBounds(layer);
+      // 2. 刷新画布和样式按钮状态。
+      render();
+    }
+
+    /**
+     * 切换选中文字的斜体状态。
+     * @returns {void}
+     */
+    function handleItalicToggle() {
+      /** 当前选中的文字图层。 */
+      const layer = getLayer(state.selectedLayerId);
+      if (!layer || layer.type !== "text") return;
+      // 1. 切换斜体并重新测量字形悬垂后的边界。
+      layer.italic = !layer.italic;
+      syncTextLayerBounds(layer);
+      // 2. 刷新画布和样式按钮状态。
+      render();
+    }
+
+    /**
+     * 处理文字对齐按钮点击。
+     * @param {MouseEvent} event 样式按钮区域点击事件
+     * @returns {void}
+     */
+    function handleAlignmentClick(event) {
+      /** 被点击的对齐按钮。 */
+      const button = event.target.closest("[data-align]");
+      /** 当前选中的文字图层。 */
+      const layer = getLayer(state.selectedLayerId);
+      if (!button || !layer || layer.type !== "text") return;
+      layer.align = button.dataset.align;
+      render();
+    }
+
+    /**
+     * 处理文字字间距滑杆输入。
+     * @returns {void}
+     */
+    function handleLetterSpacingInput() {
+      /** 当前选中的文字图层。 */
+      const layer = getLayer(state.selectedLayerId);
+      if (!layer || layer.type !== "text") return;
+      // 1. 更新字间距并重新计算文字宽度。
+      layer.letterSpacing = Number(elements.letterSpacing.value);
+      elements.letterSpacingValue.textContent = String(layer.letterSpacing);
+      syncTextLayerBounds(layer);
+      // 2. 刷新画布，使边框宽度与字间距同步。
+      renderCanvas();
+    }
+
+    /**
+     * 处理右侧图层列表中的选择、显隐和删除操作。
+     * @param {MouseEvent} event 图层列表点击事件
+     * @returns {void}
+     */
+    function handleLayerListClick(event) {
+      /** 点击位置所属的图层行。 */
+      const row = event.target.closest(".layer-row[data-layer-id]");
+      if (!row) return;
+      /** 当前图层数据。 */
+      const layer = getLayer(row.dataset.layerId);
+      /** 点击按钮声明的动作。 */
+      const actionElement = event.target.closest("[data-action]");
+      if (!layer) return;
+      // 1. 根据按钮动作处理显隐或删除。
+      if (actionElement?.dataset.action === "visibility") {
+        layer.visible = !layer.visible;
+        render();
+        return;
+      }
+      if (actionElement?.dataset.action === "delete") {
+        deleteLayer(layer.id);
+        return;
+      }
+      // 2. 未点击动作按钮时，选择整行对应图层。
+      selectLayer(layer.id);
+    }
+
+    /**
+     * 支持键盘 Enter 或空格选择图层行。
+     * @param {KeyboardEvent} event 图层列表键盘事件
+     * @returns {void}
+     */
+    function handleLayerListKeydown(event) {
+      /** 当前聚焦的图层行。 */
+      const row = event.target.closest(".layer-row[data-layer-id]");
+      if (!row || (event.key !== "Enter" && event.key !== " ")) return;
+      event.preventDefault();
+      selectLayer(row.dataset.layerId);
+    }
+
+    /**
+     * 在画布中开始图层拖动或等比缩放。
+     * @param {PointerEvent} event 画布指针按下事件
+     * @returns {void}
+     */
+    function handleCanvasPointerDown(event) {
+      /** 指针所在的画布图层元素。 */
+      const layerElement = event.target.closest(".canvas-layer");
+      if (!layerElement || state.preview) return;
+      /** 当前交互对应的图层数据。 */
+      const layer = getLayer(layerElement.dataset.layerId);
+      if (!layer) return;
+      // 1. 编辑保护：文字输入期间不启动拖拽；双击第二次按下交给原位编辑处理。
+      if (state.editingLayerId === layer.id || event.detail >= 2) return;
+      // 2. 选中目标并记录交互开始时的完整几何状态。
+      state.selectedLayerId = layer.id;
+      state.interaction = {
+        mode: event.target.dataset.action === "resize" ? "resize" : "drag",
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startX: layer.x,
+        startY: layer.y,
+        startWidth: layer.width,
+        startHeight: layer.height,
+        startFontSize: layer.type === "text" ? layer.fontSize : null,
+        layerId: layer.id,
+        element: layerElement,
+        moved: false
+      };
+      // 3. 原位更新选中态：保留当前节点，避免重绘中断指针捕获。
+      /** 画布中的全部文字节点。 */
+      const canvasLayers = elements.posterCanvas.querySelectorAll(".canvas-layer");
+      for (const canvasLayer of canvasLayers) canvasLayer.classList.toggle("selected", canvasLayer === layerElement);
+      renderLayers();
+      renderTextEditor();
+      // 4. 捕获指针：即使移出画布也能稳定完成拖动。
+      layerElement.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }
+
+    /**
+     * 根据指针位移更新正在拖动或缩放的图层。
+     * @param {PointerEvent} event 画布指针移动事件
+     * @returns {void}
+     */
+    function handleCanvasPointerMove(event) {
+      /** 当前正在进行的图层交互。 */
+      const interaction = state.interaction;
+      if (!interaction || interaction.pointerId !== event.pointerId) return;
+      /** 被操作的图层。 */
+      const layer = getLayer(interaction.layerId);
+      if (!layer) return;
+      /** 水平方向设计像素位移。 */
+      const deltaX = (event.clientX - interaction.startClientX) / getScale();
+      /** 垂直方向设计像素位移。 */
+      const deltaY = (event.clientY - interaction.startClientY) / getScale();
+      // 1. 忽略点击时的微小指针抖动，保留浏览器后续 click 与 dblclick 事件链。
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+      interaction.moved = true;
+
+      // 2. 拖动模式：限制图层保留在画布可操作范围内。
+      if (interaction.mode === "drag") {
+        layer.x = clamp(interaction.startX + deltaX, 0, Math.max(0, state.canvas.width - layer.width));
+        layer.y = clamp(interaction.startY + deltaY, 0, Math.max(0, state.canvas.height - layer.height));
+      } else {
+        // 3. 缩放模式：图片保持宽高比例，文字按字号重新测量实际内容边界。
+        /** 缩放后的目标宽度。 */
+        const targetWidth = clamp(interaction.startWidth + deltaX, 80, state.canvas.width - layer.x);
+        /** 相对交互开始状态的缩放系数。 */
+        const ratio = targetWidth / interaction.startWidth;
+        if (layer.type === "text") {
+          layer.fontSize = clamp(interaction.startFontSize * ratio, 12, 320);
+          syncTextLayerBounds(layer);
+          elements.fontSize.value = String(Math.round(layer.fontSize));
+        } else {
+          layer.width = targetWidth;
+          layer.height = Math.max(28, interaction.startHeight * ratio);
+        }
+      }
+      // 4. 原位刷新几何样式：拖动期间不替换正在捕获指针的节点。
+      interaction.element.style.left = `${layer.x * getScale()}px`;
+      interaction.element.style.top = `${layer.y * getScale()}px`;
+      interaction.element.style.width = `${layer.width * getScale()}px`;
+      interaction.element.style.height = `${layer.height * getScale()}px`;
+      if (layer.type === "text") interaction.element.style.fontSize = `${layer.fontSize * getScale()}px`;
+      /** 当前交互图层的缩放手柄。 */
+      const resizeHandle = interaction.element.querySelector(".resize-handle");
+      if (resizeHandle) positionResizeHandle(resizeHandle, layer, getScale());
+      event.preventDefault();
+    }
+
+    /**
+     * 结束当前画布指针交互。
+     * @param {PointerEvent} event 画布指针释放或取消事件
+     * @returns {void}
+     */
+    function handleCanvasPointerUp(event) {
+      if (!state.interaction || state.interaction.pointerId !== event.pointerId) return;
+      /** 本次交互是否实际改变过图层位置或大小。 */
+      const hasMoved = state.interaction.moved;
+      state.interaction = null;
+      // WHY: 纯点击时保留原节点，让浏览器能在同一目标上继续派发双击事件。
+      if (hasMoved) render();
+    }
+
+    /**
+     * 处理画布文字双击并进入原位编辑。
+     * @param {MouseEvent} event 画布双击事件
+     * @returns {void}
+     */
+    function handleCanvasDoubleClick(event) {
+      /** 双击位置所属的文字图层。 */
+      const layerElement = event.target.closest(".canvas-layer");
+      if (!layerElement || state.preview) return;
+      event.preventDefault();
+      startInlineEditing(layerElement.dataset.layerId);
+    }
+
+    /**
+     * 将画布内正在输入的文字即时写回图层状态。
+     * @param {InputEvent} event 可编辑文字的输入事件
+     * @returns {void}
+     */
+    function handleInlineTextInput(event) {
+      /** 触发输入的可编辑文字节点。 */
+      const textElement = event.target.closest(".text-content[contenteditable]");
+      if (!textElement) return;
+      /** 可编辑文字所属的图层容器。 */
+      const layerElement = textElement.closest(".canvas-layer");
+      /** 当前直接编辑的文字图层。 */
+      const layer = getLayer(layerElement?.dataset.layerId || null);
+      if (!layer) return;
+      // 1. 同步文字内容：保留自然换行并统一回车符。
+      layer.content = textElement.innerText.replace(/\r/g, "");
+      elements.textContent.value = layer.content;
+      syncTextLayerBounds(layer);
+      // 2. 原位更新边界：保留当前文字节点和光标位置，同时让选中框跟随内容。
+      layerElement.style.left = `${layer.x * getScale()}px`;
+      layerElement.style.top = `${layer.y * getScale()}px`;
+      layerElement.style.width = `${layer.width * getScale()}px`;
+      layerElement.style.height = `${layer.height * getScale()}px`;
+      // 3. 刷新图层摘要，但不替换正在编辑的画布节点。
+      renderLayers();
+    }
+
+    /**
+     * 在画布文字失去焦点时提交并结束原位编辑。
+     * @param {FocusEvent} event 可编辑文字的焦点离开事件
+     * @returns {void}
+     */
+    function handleInlineTextFocusOut(event) {
+      /** 刚刚失去焦点的可编辑文字节点。 */
+      const textElement = event.target.closest(".text-content[contenteditable]");
+      if (!textElement || !state.editingLayerId) return;
+      finishInlineEditing(textElement);
+    }
+
+    /**
+     * 处理原位编辑快捷键，Esc 用于完成编辑。
+     * @param {KeyboardEvent} event 可编辑文字的键盘事件
+     * @returns {void}
+     */
+    function handleInlineTextKeydown(event) {
+      /** 当前接收键盘输入的可编辑文字节点。 */
+      const textElement = event.target.closest(".text-content[contenteditable]");
+      if (!textElement || event.key !== "Escape") return;
+      // WHY: 阻止事件继续冒泡，避免全局 Esc 同时触发其他编辑器状态变化。
+      event.preventDefault();
+      event.stopPropagation();
+      textElement.blur();
+    }
+
+    /**
+     * 处理缩放滑杆变化。
+     * @returns {void}
+     */
+    function handleZoomInput() {
+      state.zoom = clamp(Number(elements.zoomRange.value), minimumZoom, getMaximumFittingZoom());
+      renderCanvas();
+      renderGlobalControls();
+    }
+
+    /**
+     * 在画布工作区滚动鼠标滚轮时调整显示比例。
+     * @param {WheelEvent} event 工作区滚轮事件
+     * @returns {void}
+     */
+    function handleCanvasWheel(event) {
+      if (event.deltaY === 0) return;
+      /** 当前工作区允许的最大显示比例。 */
+      const fittingZoom = getMaximumFittingZoom();
+      /** 根据滚轮方向计算的缩放增量；向上放大、向下缩小。 */
+      const zoomDelta = event.deltaY < 0 ? wheelZoomStep : -wheelZoomStep;
+      // 1. 阻止页面滚动，保证滚轮操作只影响画布视图。
+      event.preventDefault();
+      // 2. 在最小比例和最大适配比例之间更新缩放，避免出现工作区滚动条。
+      state.zoom = clamp(state.zoom + zoomDelta, minimumZoom, fittingZoom);
+      renderCanvas();
+      renderGlobalControls();
+    }
+
+    /**
+     * 窗口尺寸变化时重新计算画布的最大适配比例。
+     * @returns {void}
+     */
+    function handleWindowResize() {
+      fitCanvasToViewport();
+    }
+
+    /**
+     * 将选中图层上移或下移一个层级。
+     * @param {number} direction 层级方向；1 表示上移，-1 表示下移
+     * @returns {void}
+     */
+    function moveSelectedLayer(direction) {
+      /** 选中图层的当前数组位置。 */
+      const currentIndex = state.layers.findIndex(findSelectedLayerIndex);
+      /** 选中图层的目标数组位置。 */
+      const targetIndex = currentIndex + direction;
+      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= state.layers.length) return;
+      // 1. 交换相邻图层，保持其他层级顺序不变。
+      /** 目标位置原有图层。 */
+      const targetLayer = state.layers[targetIndex];
+      state.layers[targetIndex] = state.layers[currentIndex];
+      state.layers[currentIndex] = targetLayer;
+      // 2. 刷新画布和图层面板以展示新层级。
+      render();
+    }
+
+    /**
+     * 上移当前选中图层。
+     * @returns {void}
+     */
+    function handleMoveLayerUp() {
+      moveSelectedLayer(1);
+    }
+
+    /**
+     * 下移当前选中图层。
+     * @returns {void}
+     */
+    function handleMoveLayerDown() {
+      moveSelectedLayer(-1);
+    }
+
+    /**
+     * 切换无编辑边框的预览模式。
+     * @returns {void}
+     */
+    function togglePreview() {
+      state.preview = !state.preview;
+      render();
+    }
+
+    /**
+     * 处理全局快捷键，包括删除图层与退出预览。
+     * @param {KeyboardEvent} event 页面键盘事件
+     * @returns {void}
+     */
+    function handleGlobalKeydown(event) {
+      /** 当前焦点元素的标签名称。 */
+      const tagName = document.activeElement?.tagName || "";
+      /** 焦点是否位于可输入控件中。 */
+      const isTyping = tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || Boolean(document.activeElement?.isContentEditable);
+      // 1. ESC 优先关闭新增图层菜单，维持图层面板的键盘可达性。
+      if (event.key === "Escape" && !elements.layerAddMenu.hidden) {
+        closeLayerAddMenu();
+        elements.addLayerButton.focus();
+        return;
+      }
+      // 2. ESC 用于退出预览，避免与文字输入冲突。
+      if (event.key === "Escape" && state.preview) {
+        state.preview = false;
+        render();
+        return;
+      }
+      // 3. 非输入状态下允许 Delete 或 Backspace 删除选中图层。
+      if (!isTyping && (event.key === "Delete" || event.key === "Backspace") && state.selectedLayerId) {
+        event.preventDefault();
+        deleteLayer(state.selectedLayerId);
+      }
+    }
+
+    /**
+     * 计算 Canvas 渐变在指定角度下的端点。
+     * @param {number} width 导出画布宽度
+     * @param {number} height 导出画布高度
+     * @param {number} angle CSS 风格角度，单位为度
+     * @returns {{x0:number,y0:number,x1:number,y1:number}} 渐变起止坐标
+     */
+    function getGradientPoints(width, height, angle) {
+      /** 将 CSS 角度换算为 Canvas 使用的弧度方向。 */
+      const radians = (angle - 90) * Math.PI / 180;
+      /** 画布对角线长度，确保渐变覆盖全部边角。 */
+      const length = Math.sqrt(width * width + height * height);
+      /** 画布水平中心。 */
+      const centerX = width / 2;
+      /** 画布垂直中心。 */
+      const centerY = height / 2;
+      /** 渐变方向的水平半长度。 */
+      const offsetX = Math.cos(radians) * length / 2;
+      /** 渐变方向的垂直半长度。 */
+      const offsetY = Math.sin(radians) * length / 2;
+      return { x0: centerX - offsetX, y0: centerY - offsetY, x1: centerX + offsetX, y1: centerY + offsetY };
+    }
+
+    /**
+     * 将图片按居中裁切方式完整覆盖导出画布。
+     * @param {CanvasRenderingContext2D} context 导出画布的二维绘图上下文
+     * @param {HTMLImageElement} image 已加载完成的背景图片
+     * @param {number} width 导出画布宽度，单位像素
+     * @param {number} height 导出画布高度，单位像素
+     * @returns {void}
+     */
+    function drawCoverImage(context, image, width, height) {
+      /** 让图片同时覆盖画布宽高所需的缩放系数。 */
+      const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+      /** 背景图片实际绘制宽度。 */
+      const drawWidth = image.naturalWidth * scale;
+      /** 背景图片实际绘制高度。 */
+      const drawHeight = image.naturalHeight * scale;
+      /** 图片居中裁切后的水平起点。 */
+      const drawX = (width - drawWidth) / 2;
+      /** 图片居中裁切后的垂直起点。 */
+      const drawY = (height - drawHeight) / 2;
+      context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+    }
+
+    /**
+     * 测量带自定义字间距的单行文字宽度。
+     * @param {CanvasRenderingContext2D} context 导出画布的二维绘图上下文
+     * @param {string} text 待测量的单行文字
+     * @param {number} spacing 相邻字符的额外间距，单位像素
+     * @returns {number} 文字完整绘制宽度
+     */
+    function measureSpacedText(context, text, spacing) {
+      /** 普通字形宽度。 */
+      const glyphWidth = context.measureText(text).width;
+      /** 字符之间的间隔数量。 */
+      const gapCount = Math.max(0, Array.from(text).length - 1);
+      return glyphWidth + gapCount * spacing;
+    }
+
+    /**
+     * 在导出画布中绘制一行支持字间距和对齐方式的文字。
+     * @param {CanvasRenderingContext2D} context 导出画布的二维绘图上下文
+     * @param {string} text 待绘制的单行文字
+     * @param {number} x 文字盒左边界
+     * @param {number} y 文字基线位置
+     * @param {number} width 文字盒宽度
+     * @param {number} spacing 相邻字符的额外间距
+     * @param {"left"|"center"|"right"} align 文字对齐方式
+     * @returns {void}
+     */
+    function drawSpacedText(context, text, x, y, width, spacing, align) {
+      /** 将代理对与组合字符尽量按可见字符拆分。 */
+      const characters = Array.from(text);
+      /** 带字间距的总绘制宽度。 */
+      const totalWidth = measureSpacedText(context, text, spacing);
+      /** 当前字符开始绘制的水平坐标。 */
+      let cursorX = x;
+      if (align === "center") cursorX = x + (width - totalWidth) / 2;
+      if (align === "right") cursorX = x + width - totalWidth;
+      // 1. 逐字符绘制，补齐 Canvas 对 letter-spacing 支持不一致的问题。
+      for (const character of characters) {
+        context.fillText(character, cursorX, y);
+        cursorX += context.measureText(character).width + spacing;
+      }
+    }
+
+    /**
+     * 将当前设计按原始画布尺寸导出为 PNG 图片。
+     * @returns {Promise<void>} 图片生成并触发浏览器下载后完成
+     */
+    async function exportPoster() {
+      /** 离屏导出画布。 */
+      const exportCanvas = document.createElement("canvas");
+      /** 离屏画布的二维绘图上下文。 */
+      const context = exportCanvas.getContext("2d");
+      if (!context) {
+        showToast("当前浏览器不支持图片导出");
+        return;
+      }
+      // 1. 等待在线字体尽量加载完成，减少导出与编辑预览的差异。
+      await document.fonts.ready;
+      exportCanvas.width = state.canvas.width;
+      exportCanvas.height = state.canvas.height;
+
+      // 2. 绘制图片、纯色或渐变背景。
+      if (state.background.type === "image" && state.background.src) {
+        try {
+          /** 已加载并用于导出的背景图片。 */
+          const backgroundImage = await loadImageSource(state.background.src);
+          drawCoverImage(context, backgroundImage, exportCanvas.width, exportCanvas.height);
+        } catch {
+          showToast("背景图片加载失败，暂时无法导出");
+          return;
+        }
+      } else if (state.background.type === "solid") {
+        context.fillStyle = state.background.color;
+        context.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      } else {
+        /** 当前渐变的画布端点。 */
+        const points = getGradientPoints(state.canvas.width, state.canvas.height, state.background.angle);
+        /** 导出画布的线性渐变。 */
+        const gradient = context.createLinearGradient(points.x0, points.y0, points.x1, points.y1);
+        gradient.addColorStop(0, state.background.color);
+        gradient.addColorStop(1, state.background.colorTwo);
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      }
+
+      // 3. 按层级顺序绘制全部可见文字和图片。
+      for (const layer of state.layers) {
+        if (!layer.visible) continue;
+        context.save();
+        // 4. 图片图层按画布坐标绘制，失败时终止导出并提示用户。
+        if (layer.type === "image") {
+          try {
+            /** 当前待导出的图片图层内容。 */
+            const image = await loadImageSource(layer.src);
+            context.drawImage(image, layer.x, layer.y, layer.width, layer.height);
+          } catch {
+            context.restore();
+            showToast(`图片「${layer.name}」加载失败`);
+            return;
+          }
+          context.restore();
+          continue;
+        }
+        // 5. 文字图层使用与编辑画布一致的字体、行高和字间距。
+        context.fillStyle = layer.color;
+        context.textBaseline = "alphabetic";
+        context.font = `${layer.italic ? "italic " : ""}${layer.fontWeight} ${layer.fontSize}px "${layer.fontFamily}", sans-serif`;
+        /** 保留用户换行的文字行。 */
+        const lines = layer.content.split("\n");
+        /** 与编辑画布一致的紧凑行高。 */
+        const lineHeight = layer.fontSize * 0.96;
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+          /** 当前文字行的基线位置。 */
+          const baseline = layer.y + layer.fontSize * 0.82 + lineIndex * lineHeight;
+          drawSpacedText(context, lines[lineIndex], layer.x, baseline, layer.width, layer.letterSpacing, layer.align);
+        }
+        context.restore();
+      }
+
+      // 6. 生成 PNG 并通过临时下载链接交付给用户。
+      exportCanvas.toBlob(downloadExportedBlob, "image/png", 1);
+    }
+
+    /**
+     * 下载已生成的海报图片数据。
+     * @param {Blob|null} blob 浏览器生成的 PNG 数据；失败时为空
+     * @returns {void}
+     */
+    function downloadExportedBlob(blob) {
+      if (!blob) {
+        showToast("导出失败，请重试");
+        return;
+      }
+      /** PNG 数据的临时浏览器地址。 */
+      const url = URL.createObjectURL(blob);
+      /** 触发文件保存的临时链接。 */
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `folio-poster-${state.canvas.width}x${state.canvas.height}.png`;
+      link.click();
+      // WHY: 延迟释放地址，确保浏览器已经读取完临时图片数据。
+      window.setTimeout(revokeExportUrl, 1000);
+      showToast("PNG 已开始下载");
+
+      /**
+       * 释放本次导出创建的临时浏览器地址。
+       * @returns {void}
+       */
+      function revokeExportUrl() {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    /**
+     * 绑定编辑器所有静态交互事件。
+     * @returns {void}
+     */
+    function bindEvents() {
+      // 1. 绑定画布、背景和文字属性交互。
+      document.querySelector("#ratioGrid").addEventListener("click", handleRatioClick);
+      document.querySelector("#applySizeButton").addEventListener("click", handleApplyCustomSize);
+      document.querySelector("#backgroundSwatches").addEventListener("click", handleBackgroundSwatch);
+      document.querySelector("#applyBackgroundButton").addEventListener("click", handleApplyCustomBackground);
+      elements.backgroundImageUploadInput.addEventListener("change", handleBackgroundImageUpload);
+      elements.colorOne.addEventListener("input", handleBackgroundColorInput);
+      elements.colorTwo.addEventListener("input", handleBackgroundColorInput);
+      elements.textContent.addEventListener("input", handleTextContentInput);
+      elements.fontFamily.addEventListener("change", handleFontFamilyChange);
+      elements.fontSize.addEventListener("input", handleFontSizeInput);
+      elements.textColor.addEventListener("input", handleTextColorInput);
+      elements.boldButton.addEventListener("click", handleBoldToggle);
+      elements.italicButton.addEventListener("click", handleItalicToggle);
+      document.querySelector(".style-row").addEventListener("click", handleAlignmentClick);
+      elements.letterSpacing.addEventListener("input", handleLetterSpacingInput);
+
+      // 2. 绑定图层、画布指针与全局快捷操作。
+      document.querySelector("#addTextButton").addEventListener("click", addTextLayer);
+      elements.addLayerButton.addEventListener("click", toggleLayerAddMenu);
+      document.querySelector("#addTextMenuButton").addEventListener("click", handleAddTextFromMenu);
+      document.querySelector("#addImageMenuButton").addEventListener("click", handleChooseImage);
+      elements.imageUploadInput.addEventListener("change", handleImageUpload);
+      elements.layersList.addEventListener("click", handleLayerListClick);
+      elements.layersList.addEventListener("keydown", handleLayerListKeydown);
+      elements.posterCanvas.addEventListener("pointerdown", handleCanvasPointerDown);
+      elements.posterCanvas.addEventListener("pointermove", handleCanvasPointerMove);
+      elements.posterCanvas.addEventListener("pointerup", handleCanvasPointerUp);
+      elements.posterCanvas.addEventListener("pointercancel", handleCanvasPointerUp);
+      elements.posterCanvas.addEventListener("dblclick", handleCanvasDoubleClick);
+      elements.posterCanvas.addEventListener("input", handleInlineTextInput);
+      elements.posterCanvas.addEventListener("focusout", handleInlineTextFocusOut);
+      elements.posterCanvas.addEventListener("keydown", handleInlineTextKeydown);
+      elements.zoomRange.addEventListener("input", handleZoomInput);
+      elements.stageViewport.addEventListener("wheel", handleCanvasWheel, { passive: false });
+      elements.moveUp.addEventListener("click", handleMoveLayerUp);
+      elements.moveDown.addEventListener("click", handleMoveLayerDown);
+      elements.previewButton.addEventListener("click", togglePreview);
+      document.querySelector("#exportButton").addEventListener("click", exportPoster);
+      document.addEventListener("pointerdown", handleDocumentPointerDown);
+      document.addEventListener("keydown", handleGlobalKeydown);
+      window.addEventListener("resize", handleWindowResize);
+    }
+
+    // 1. 初始化文字边界、事件与首屏状态。
+    syncAllTextLayerBounds();
+    bindEvents();
+    render();
+    // 2. 字体和首帧布局就绪后分别校正文字尺寸与画布适配比例。
+    document.fonts.ready.then(handleFontsReady);
+    window.requestAnimationFrame(fitCanvasToViewport);
+  </script>
+</body>
+</html>
