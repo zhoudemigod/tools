@@ -2,53 +2,56 @@
 
 /** 页面交互所需的全部 DOM 元素。 */
 const elements = {
-  uploadForm: document.querySelector("#uploadForm"),
-  dropZone: document.querySelector("#dropZone"),
-  imageInput: document.querySelector("#imageInput"),
-  fileSummary: document.querySelector("#fileSummary"),
+  /** 当前图片文件名。 */
   fileName: document.querySelector("#fileName"),
-  fileMeta: document.querySelector("#fileMeta"),
+  /** 当前图片像素尺寸。 */
+  dimensions: document.querySelector("#dimensions"),
+  /** 更换图片按钮。 */
   replaceButton: document.querySelector("#replaceButton"),
-  authorizedInput: document.querySelector("#authorizedInput"),
+  /** 支持拖入文件的工作区。 */
+  dropZone: document.querySelector("#dropZone"),
+  /** 未上传图片时的空状态。 */
+  emptyState: document.querySelector("#emptyState"),
+  /** 首次选择图片按钮。 */
+  uploadButton: document.querySelector("#uploadButton"),
+  /** 图片编辑区域容器。 */
+  editor: document.querySelector("#editor"),
+  /** 原图与结果图叠加区域。 */
+  compareView: document.querySelector("#compareView"),
+  /** 原始图片图层。 */
+  sourceImage: document.querySelector("#sourceImage"),
+  /** 模型处理结果图层。 */
+  resultImage: document.querySelector("#resultImage"),
+  /** 提交处理按钮。 */
   processButton: document.querySelector("#processButton"),
-  statusMessage: document.querySelector("#statusMessage"),
-  previewStage: document.querySelector("#previewStage"),
-  emptyPreview: document.querySelector("#emptyPreview"),
-  imagePreview: document.querySelector("#imagePreview"),
-  sourcePreview: document.querySelector("#sourcePreview"),
-  resultFigure: document.querySelector("#resultFigure"),
-  resultPreview: document.querySelector("#resultPreview"),
-  resultPill: document.querySelector("#resultPill"),
-  resultActions: document.querySelector("#resultActions"),
-  resultTitle: document.querySelector("#resultTitle"),
-  resultDetail: document.querySelector("#resultDetail"),
+  /** 下载结果按钮。 */
   downloadButton: document.querySelector("#downloadButton"),
+  /** 处理状态提示。 */
+  statusMessage: document.querySelector("#statusMessage"),
+  /** 隐藏的系统文件选择输入框。 */
+  imageInput: document.querySelector("#imageInput"),
 };
 
-/** 当前页面会话中的文件与对象 URL 状态。 */
+/** 当前页面会话中的图片、结果和对比状态。 */
 const state = {
+  /** 当前选择的原始图片文件。 */
   file: null,
+  /** 原图的浏览器对象 URL。 */
   sourceUrl: null,
+  /** 处理结果的浏览器对象 URL。 */
   resultUrl: null,
+  /** 处理结果的下载文件名。 */
   resultName: null,
+  /** 当前是否正在执行模型处理。 */
   processing: false,
+  /** 原图与结果图分隔线位置，单位为百分比。 */
+  comparePosition: 50,
 };
 
 /** 浏览器允许选择的图片 MIME 集合。 */
 const supportedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-/** 单张图片最大字节数，与后端 20 MiB 限制保持一致。 */
+/** 单张图片最大字节数，与后端限制保持一致。 */
 const maxUploadBytes = 20 * 1024 * 1024;
-
-/**
- * 将文件字节数格式化为便于阅读的文本。
- *
- * @param {number} bytes 文件大小，单位为字节
- * @returns {string} 带单位的文件大小文本
- */
-function formatBytes(bytes) {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 /**
  * 更新页面状态消息及其视觉语义。
@@ -58,17 +61,17 @@ function formatBytes(bytes) {
  * @returns {void}
  */
 function setStatus(message, tone = "idle") {
-  // 1. 更新文本：让屏幕阅读器通过 live region 获知处理进度。
+  // 1. 更新文本：通过 live region 向辅助技术报告处理进度。
   elements.statusMessage.textContent = message;
-  // 2. 更新语义色：错误与成功状态使用稳定的颜色反馈。
-  elements.statusMessage.classList.toggle("is-error", tone === "error");
+  // 2. 更新颜色：成功和失败状态保持可辨识反馈。
   elements.statusMessage.classList.toggle("is-success", tone === "success");
+  elements.statusMessage.classList.toggle("is-error", tone === "error");
 }
 
 /**
- * 释放指定对象 URL，避免重复选择图片造成内存占用。
+ * 释放浏览器对象 URL，避免更换图片后保留旧图片内存。
  *
- * @param {string|null} objectUrl 待释放的浏览器对象 URL，可为空
+ * @param {string|null} objectUrl 待释放的对象 URL，可为空
  * @returns {void}
  */
 function revokeObjectUrl(objectUrl) {
@@ -76,42 +79,67 @@ function revokeObjectUrl(objectUrl) {
 }
 
 /**
- * 清除上一次处理结果，并保留当前源文件选择。
+ * 根据当前图片和处理状态更新提交按钮。
+ *
+ * @returns {void}
+ */
+function updateProcessState() {
+  elements.processButton.disabled = !state.file || state.processing;
+}
+
+/**
+ * 清除当前处理结果并恢复原图预览状态。
  *
  * @returns {void}
  */
 function resetResult() {
-  // 1. 回收旧结果：确保连续处理时只保留最新结果图片。
+  // 1. 回收旧结果：连续处理时只保留最新结果。
   revokeObjectUrl(state.resultUrl);
   state.resultUrl = null;
   state.resultName = null;
-  elements.resultPreview.removeAttribute("src");
-  // 2. 恢复预览：隐藏结果相关说明和下载入口。
-  elements.resultFigure.classList.add("is-hidden");
-  elements.resultPill.classList.add("is-hidden");
-  elements.resultActions.classList.add("is-hidden");
+  elements.resultImage.src = state.sourceUrl || "";
+  // 2. 恢复预览：隐藏比较线和下载入口。
+  elements.compareView.classList.remove("has-result");
+  elements.downloadButton.hidden = true;
+  elements.compareView.style.setProperty("--split", "50%");
+  state.comparePosition = 50;
 }
 
 /**
- * 根据文件选择和授权确认状态更新提交按钮。
+ * 打开系统图片选择器。
  *
  * @returns {void}
  */
-function updateSubmitState() {
-  elements.processButton.disabled = !state.file || !elements.authorizedInput.checked || state.processing;
+function openFilePicker() {
+  elements.imageInput.click();
 }
 
 /**
- * 校验并展示用户选择的本地图片。
+ * 在原图加载完成后同步画布比例和尺寸信息。
+ *
+ * @returns {void}
+ */
+function handleSourceImageLoad() {
+  /** 原图像素宽度。 */
+  const width = elements.sourceImage.naturalWidth;
+  /** 原图像素高度。 */
+  const height = elements.sourceImage.naturalHeight;
+  if (!width || !height) return;
+  elements.compareView.style.aspectRatio = `${width} / ${height}`;
+  elements.dimensions.textContent = `${width} × ${height}`;
+}
+
+/**
+ * 校验并显示用户选择的图片。
  *
  * @param {File|null} file 用户选择或拖入的图片文件
  * @returns {void}
  */
 function selectFile(file) {
-  // 1. 校验选择：前端快速提示，后端仍会按真实图片字节再次验证。
+  // 1. 校验文件：前端快速反馈，服务端仍会按真实字节复核。
   if (!file) return;
   if (!supportedTypes.has(file.type)) {
-    setStatus("当前仅支持 JPG、PNG 和 WebP 图片。", "error");
+    setStatus("仅支持 JPG、PNG 和 WebP。", "error");
     return;
   }
   if (file.size > maxUploadBytes) {
@@ -119,29 +147,93 @@ function selectFile(file) {
     return;
   }
 
-  // 2. 更新文件：回收旧预览并创建当前图片的本地对象 URL。
+  // 2. 更新图片资源：释放旧原图和处理结果，再创建本地预览。
   revokeObjectUrl(state.sourceUrl);
   state.file = file;
   state.sourceUrl = URL.createObjectURL(file);
   resetResult();
+  elements.sourceImage.src = state.sourceUrl;
+  elements.resultImage.src = state.sourceUrl;
 
-  // 3. 展示预览：呈现文件信息和待处理图片。
+  // 3. 更新工作区：直接进入可处理状态，不要求模式选择或区域框选。
   elements.fileName.textContent = file.name;
-  elements.fileMeta.textContent = `${formatBytes(file.size)} · ${file.type.replace("image/", "").toUpperCase()}`;
-  elements.fileSummary.classList.remove("is-hidden");
-  elements.emptyPreview.classList.add("is-hidden");
-  elements.imagePreview.classList.remove("is-hidden");
-  elements.sourcePreview.src = state.sourceUrl;
-  elements.previewStage.classList.remove("is-empty");
-  setStatus("图片已就绪，确认授权后开始处理。", "idle");
-  updateSubmitState();
+  elements.emptyState.hidden = true;
+  elements.editor.hidden = false;
+  elements.replaceButton.hidden = false;
+  setStatus("图片已就绪。", "idle");
+  updateProcessState();
 }
 
 /**
- * 从响应头读取下载文件名，并提供稳定的默认名称。
+ * 根据指针横坐标更新原图与处理图分隔线。
+ *
+ * @param {PointerEvent} event 图片比较区域指针事件
+ * @returns {void}
+ */
+function updateComparisonFromPointer(event) {
+  if (!state.resultUrl) return;
+  /** 图片比较区域的屏幕矩形。 */
+  const bounds = elements.compareView.getBoundingClientRect();
+  /** 指针在图片宽度中的百分比位置。 */
+  const position = ((event.clientX - bounds.left) / bounds.width) * 100;
+  state.comparePosition = Math.min(Math.max(position, 0), 100);
+  elements.compareView.style.setProperty("--split", `${state.comparePosition}%`);
+}
+
+/**
+ * 在触屏设备上开始控制结果对比分隔线。
+ *
+ * @param {PointerEvent} event 图片区域指针按下事件
+ * @returns {void}
+ */
+function handlePointerDown(event) {
+  if (!state.resultUrl) return;
+  elements.compareView.setPointerCapture(event.pointerId);
+  updateComparisonFromPointer(event);
+}
+
+/**
+ * 移动指针时同步结果对比分隔线。
+ *
+ * @param {PointerEvent} event 图片区域指针移动事件
+ * @returns {void}
+ */
+function handlePointerMove(event) {
+  updateComparisonFromPointer(event);
+}
+
+/**
+ * 释放触屏对比分隔线的指针捕获。
+ *
+ * @param {PointerEvent} event 图片区域指针释放事件
+ * @returns {void}
+ */
+function handlePointerUp(event) {
+  if (elements.compareView.hasPointerCapture(event.pointerId)) {
+    elements.compareView.releasePointerCapture(event.pointerId);
+  }
+}
+
+/**
+ * 使用方向键微调处理结果的对比分隔线。
+ *
+ * @param {KeyboardEvent} event 图片比较区域键盘事件
+ * @returns {void}
+ */
+function handleCompareKeydown(event) {
+  if (!state.resultUrl || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+  /** 方向键对应的对比线移动量，单位为百分比。 */
+  const delta = event.key === "ArrowLeft" ? -2 : 2;
+  state.comparePosition = Math.min(Math.max(state.comparePosition + delta, 0), 100);
+  elements.compareView.style.setProperty("--split", `${state.comparePosition}%`);
+  event.preventDefault();
+}
+
+/**
+ * 从响应头读取下载文件名。
  *
  * @param {Response} response 图片处理接口响应
- * @returns {string} 结果图片的下载文件名
+ * @returns {string} 结果图片下载文件名
  */
 function getDownloadName(response) {
   /** Content-Disposition 响应头，可能为空。 */
@@ -157,99 +249,87 @@ function getDownloadName(response) {
 }
 
 /**
- * 从失败响应中读取适合展示的错误说明。
+ * 从失败响应中读取用户可理解的错误提示。
  *
  * @param {Response} response 处理失败的接口响应
- * @returns {Promise<string>} 后端错误说明或稳定的默认提示
+ * @returns {Promise<string>} 标准化错误信息
  */
 async function getErrorMessage(response) {
   try {
-    /** 后端返回的结构化错误信息。 */
-    const errorBody = await response.json();
-    return errorBody.detail || "处理失败，请稍后重试。";
+    /** 后端返回的错误响应对象。 */
+    const body = await response.json();
+    /** FastAPI detail 字段，可能是字符串或结构化对象。 */
+    const detail = body.detail;
+    if (detail && typeof detail === "object") {
+      return detail.message || "处理失败，请重试。";
+    }
+    return detail || "处理失败，请重试。";
   } catch {
-    return "处理失败，请稍后重试。";
+    return "处理失败，请重试。";
   }
 }
 
 /**
- * 将后端状态转换为面向用户的结果说明。
+ * 把响应头中的模型后端转换为简短状态文本。
  *
- * @param {string} status 上游算法返回的质量状态
- * @param {string[]} labels 已识别的可见标记名称
- * @returns {{title: string, detail: string}} 结果标题与补充说明
+ * @param {Response} response 图片处理接口响应
+ * @returns {string} 面向用户的模型名称
  */
-function describeResult(status, labels) {
-  /** 已识别标记的中文展示文本。 */
-  const markText = labels.length ? `识别到：${labels.join("、")}` : "未识别到已注册的可见标记";
-  if (status === "cleaned") return { title: "标记已移除", detail: markText };
-  if (status === "partial") return { title: "已处理，建议复核", detail: `${markText}；局部仍可能有残留。` };
-  if (status === "no_watermark") return { title: "未发现已注册标记", detail: "已返回原图副本，来源元数据保持不变。" };
-  return { title: "处理完成，建议复核", detail: `${markText}；自动验证未能确认最终质量。` };
+function getBackendLabel(response) {
+  /** 上游实际使用的模型后端名称列表。 */
+  const backend = decodeURIComponent(response.headers.get("X-Removal-Backend") || "");
+  if (backend.includes("lama")) return "LaMa 模型";
+  if (backend.includes("migan")) return "MI-GAN 模型";
+  return "自动修复";
 }
 
 /**
- * 提交图片并在页面中展示处理结果。
+ * 自动检测当前图片的已注册水印并显示模型处理结果。
  *
- * @param {SubmitEvent} event 表单提交事件
  * @returns {Promise<void>}
  */
-async function handleSubmit(event) {
-  event.preventDefault();
-  if (!state.file || !elements.authorizedInput.checked || state.processing) return;
+async function processImage() {
+  if (elements.processButton.disabled || !state.file) return;
 
-  // 1. 进入处理中状态：锁定重复提交并向用户显示进度。
+  // 1. 锁定操作：避免同一图片在模型推理期间重复提交。
   state.processing = true;
   elements.processButton.classList.add("is-loading");
-  updateSubmitState();
   resetResult();
-  setStatus("正在识别并修复可见标记，请稍候…", "idle");
+  updateProcessState();
+  setStatus("正在识别并修复…", "idle");
 
   try {
-    // 2. 发送请求：图片和授权确认通过同一个 multipart 表单提交。
-    /** 提交给本地服务的表单内容。 */
+    // 2. 构建请求：只提交原图，标记检测和位置计算均由上游完成。
+    /** 图片处理接口表单数据。 */
     const formData = new FormData();
     formData.append("image", state.file);
-    formData.append("authorized", "true");
     /** 本地图片处理接口响应。 */
     const response = await fetch("/api/remove", { method: "POST", body: formData });
-
     if (!response.ok) {
-      /** 已整理为稳定文本的接口错误说明。 */
-      const errorMessage = await getErrorMessage(response);
-      throw new Error(errorMessage);
+      throw new Error(await getErrorMessage(response));
     }
 
-    // 3. 读取结果：保存对象 URL、质量状态和下载名称。
+    // 3. 展示结果：结果作为底图，原图通过裁切叠加在左侧。
     /** 后端返回的处理后图片内容。 */
     const resultBlob = await response.blob();
-    /** 上游算法质量状态。 */
-    const removalStatus = response.headers.get("X-Removal-Status") || "unvalidated";
-    /** URL 编码的标记名称响应头。 */
-    const encodedMarks = response.headers.get("X-Removed-Marks") || "";
-    /** 已识别的标记名称列表。 */
-    const removedMarks = encodedMarks ? decodeURIComponent(encodedMarks).split(",").filter(Boolean) : [];
-    /** 面向用户的处理结果说明。 */
-    const resultDescription = describeResult(removalStatus, removedMarks);
-
+    revokeObjectUrl(state.resultUrl);
     state.resultUrl = URL.createObjectURL(resultBlob);
     state.resultName = getDownloadName(response);
-    elements.resultPreview.src = state.resultUrl;
-    elements.resultTitle.textContent = resultDescription.title;
-    elements.resultDetail.textContent = resultDescription.detail;
-    elements.resultFigure.classList.remove("is-hidden");
-    elements.resultPill.classList.remove("is-hidden");
-    elements.resultActions.classList.remove("is-hidden");
-    setStatus("处理完成，可以预览并下载结果。", "success");
+    elements.resultImage.src = state.resultUrl;
+    elements.compareView.classList.add("has-result");
+    elements.downloadButton.hidden = false;
+    elements.compareView.style.setProperty("--split", "50%");
+    state.comparePosition = 50;
+    setStatus(`${getBackendLabel(response)}处理完成。`, "success");
   } catch (error) {
-    /** 对用户展示的稳定错误说明，不暴露内部调用栈。 */
-    const message = error instanceof Error ? error.message : "处理失败，请稍后重试。";
+    /** 面向用户的稳定错误文本，不暴露内部调用栈。 */
+    const message = error instanceof Error ? error.message : "处理失败，请重试。";
     setStatus(message, "error");
   } finally {
-    // 4. 恢复操作：无论成功失败都允许用户再次提交。
+    // 4. 恢复操作：无论成功失败均允许继续处理。
     state.processing = false;
     elements.processButton.classList.remove("is-loading");
-    updateSubmitState();
+    updateProcessState();
   }
 }
 
@@ -260,35 +340,13 @@ async function handleSubmit(event) {
  */
 function downloadResult() {
   if (!state.resultUrl || !state.resultName) return;
-  /** 临时下载链接，用完后立即移除。 */
+  /** 用于触发浏览器下载的临时链接。 */
   const link = document.createElement("a");
   link.href = state.resultUrl;
   link.download = state.resultName;
   document.body.append(link);
   link.click();
   link.remove();
-}
-
-/**
- * 打开系统文件选择器。
- *
- * @returns {void}
- */
-function openFilePicker() {
-  elements.imageInput.click();
-}
-
-/**
- * 支持通过 Enter 或空格打开文件选择器。
- *
- * @param {KeyboardEvent} event 拖放区域键盘事件
- * @returns {void}
- */
-function handleDropZoneKeydown(event) {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    openFilePicker();
-  }
 }
 
 /**
@@ -301,9 +359,9 @@ function handleFileInputChange() {
 }
 
 /**
- * 允许文件拖入并显示拖放激活状态。
+ * 允许图片拖入工作区并显示激活反馈。
  *
- * @param {DragEvent} event 文件拖入区域事件
+ * @param {DragEvent} event 图片拖入事件
  * @returns {void}
  */
 function handleDragOver(event) {
@@ -312,7 +370,7 @@ function handleDragOver(event) {
 }
 
 /**
- * 在文件离开拖放区域时恢复默认状态。
+ * 移除工作区的拖入激活反馈。
  *
  * @returns {void}
  */
@@ -321,9 +379,9 @@ function handleDragLeave() {
 }
 
 /**
- * 接收用户拖入的第一张图片并阻止浏览器直接打开文件。
+ * 接收拖入工作区的第一张图片。
  *
- * @param {DragEvent} event 文件放入区域事件
+ * @param {DragEvent} event 图片放入事件
  * @returns {void}
  */
 function handleDrop(event) {
@@ -333,7 +391,7 @@ function handleDrop(event) {
 }
 
 /**
- * 页面退出前释放当前会话创建的图片对象 URL。
+ * 页面退出前释放当前会话创建的对象 URL。
  *
  * @returns {void}
  */
@@ -342,19 +400,23 @@ function handleBeforeUnload() {
   revokeObjectUrl(state.resultUrl);
 }
 
-// 1. 文件选择与拖放：键盘和鼠标均可触发同一选择流程。
-elements.dropZone.addEventListener("click", openFilePicker);
-elements.dropZone.addEventListener("keydown", handleDropZoneKeydown);
+// 1. 图片加载与拖放：上传和更换共用同一个文件选择器。
+elements.uploadButton.addEventListener("click", openFilePicker);
 elements.replaceButton.addEventListener("click", openFilePicker);
 elements.imageInput.addEventListener("change", handleFileInputChange);
+elements.sourceImage.addEventListener("load", handleSourceImageLoad);
 elements.dropZone.addEventListener("dragover", handleDragOver);
 elements.dropZone.addEventListener("dragleave", handleDragLeave);
 elements.dropZone.addEventListener("drop", handleDrop);
 
-// 2. 处理与下载：授权变化实时控制提交按钮可用状态。
-elements.authorizedInput.addEventListener("change", updateSubmitState);
-elements.uploadForm.addEventListener("submit", handleSubmit);
-elements.downloadButton.addEventListener("click", downloadResult);
+// 2. 图片对比：处理完成后移动鼠标或触屏拖动分隔线。
+elements.compareView.addEventListener("pointerdown", handlePointerDown);
+elements.compareView.addEventListener("pointermove", handlePointerMove);
+elements.compareView.addEventListener("pointerup", handlePointerUp);
+elements.compareView.addEventListener("pointercancel", handlePointerUp);
+elements.compareView.addEventListener("keydown", handleCompareKeydown);
 
-// 3. 页面退出：释放两个对象 URL，避免浏览器保留图片内存。
+// 3. 处理控制：提交、下载和资源回收均关联当前页面状态。
+elements.processButton.addEventListener("click", processImage);
+elements.downloadButton.addEventListener("click", downloadResult);
 window.addEventListener("beforeunload", handleBeforeUnload);

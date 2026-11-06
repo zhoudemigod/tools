@@ -3,145 +3,96 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light" />
-    <title>Cleanframe · AI 水印处理</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23151714'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Georgia' font-size='18' font-style='italic' fill='%23f4f1e9'%3EC%3C/text%3E%3C/svg%3E" />
+    <meta name="color-scheme" content="dark" />
+    <title>AI 水印清理 · 开源好物集</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%234186f5'/%3E%3Cpath d='M9 9h14v14H9zM12 19l3-4 2 2 2-3 2 5z' fill='none' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
   <body>
-    <header class="site-header">
-      <a class="brand" href="/" aria-label="Cleanframe 首页">
-        <span class="brand-mark" aria-hidden="true">C</span>
-        <span>Cleanframe</span>
-      </a>
-      <span class="local-badge">LOCAL · CPU</span>
-    </header>
-
-    <main class="page-shell">
-      <section class="intro" aria-labelledby="page-title">
-        <p class="eyebrow">VISIBLE MARK CLEANER</p>
-        <h1 id="page-title">让画面回到作品本身。</h1>
-        <p class="intro-copy">
-          自动识别并修复常见的可见 AI 标记。文件只在本机临时处理，完成后立即清理。
-        </p>
-      </section>
-
-      <section class="workspace" aria-label="图片处理工作区">
-        <form class="upload-panel" id="uploadForm">
-          <div
-            class="drop-zone"
-            id="dropZone"
-            role="button"
-            tabindex="0"
-            aria-controls="imageInput"
-            aria-describedby="uploadHint"
-          >
-            <input
-              id="imageInput"
-              name="image"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              hidden
-            />
-            <span class="upload-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
-              </svg>
-            </span>
-            <strong>拖入图片，或点击选择</strong>
-            <span id="uploadHint">JPG、PNG、WebP · 最大 20 MB</span>
+    <main class="app">
+      <header>
+        <div class="brand">
+          <svg class="brand-logo" viewBox="0 0 32 32" aria-hidden="true">
+            <circle cx="16" cy="16" r="16" fill="#4186f5" />
+            <path d="M8.5 9.5h15v13h-15zM11 19l3.5-4 2.4 2.3 2.3-3 2.8 3.8" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round" />
+            <circle cx="12.5" cy="13" r="1.4" fill="white" />
+          </svg>
+          <div class="brand-copy">
+            <span class="brand-name">开源好物集</span>
+            <h1>AI 水印清理</h1>
           </div>
+        </div>
+        <span class="privacy">本地处理</span>
+      </header>
 
-          <div class="file-summary is-hidden" id="fileSummary" aria-live="polite">
-            <div class="file-copy">
-              <strong id="fileName">—</strong>
-              <span id="fileMeta">—</span>
+      <div class="layout">
+        <section class="viewer" aria-label="图片处理区域">
+          <div class="bar">
+            <span id="fileName">图片工作区</span>
+            <div class="bar-meta">
+              <span id="dimensions">尚未选择图片</span>
+              <button class="bar-button" id="replaceButton" type="button" hidden>更换图片</button>
             </div>
-            <button class="text-button" id="replaceButton" type="button">更换</button>
           </div>
 
-          <label class="consent-row">
-            <input id="authorizedInput" name="authorized" type="checkbox" value="true" />
-            <span>
-              我确认拥有该图片或已获得编辑授权，并会遵守适用的 AI 内容标识规则。
-            </span>
-          </label>
+          <div class="stage" id="dropZone">
+            <div class="empty" id="emptyState">
+              <span class="empty-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <circle cx="8" cy="9" r="1.5" />
+                  <path d="m4 17 5-5 4 4 3-4 4 5" />
+                </svg>
+              </span>
+              <h2>上传一张图片</h2>
+              <button class="primary" id="uploadButton" type="button">选择图片</button>
+              <span>JPG · PNG · WebP</span>
+            </div>
 
-          <button class="primary-button" id="processButton" type="submit" disabled>
-            <span class="button-label">开始处理</span>
+            <div class="editor" id="editor" hidden>
+              <div
+                class="compare-view"
+                id="compareView"
+                tabindex="0"
+                role="group"
+                aria-label="图片编辑区域；处理后移动鼠标可对比原图和结果"
+              >
+                <img class="compare-image result-image" id="resultImage" alt="处理后图片" draggable="false" />
+                <img class="compare-image original-image" id="sourceImage" alt="原始图片" draggable="false" />
+                <div class="compare-line" id="compareLine" aria-hidden="true"><span></span></div>
+                <span class="compare-label label-before">原图</span>
+                <span class="compare-label label-after">处理后</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="settings" aria-label="水印处理设置">
+          <div class="settings-heading">
+            <h2>AI 自动去除</h2>
+            <span class="engine-pill">LaMa</span>
+          </div>
+
+          <button class="primary process-button" id="processButton" type="button" disabled>
+            <span class="button-label">去除水印</span>
             <span class="button-loader" aria-hidden="true"></span>
           </button>
 
-          <p class="status-message" id="statusMessage" role="status" aria-live="polite">
-            选择图片后即可开始。
+          <button class="secondary" id="downloadButton" type="button" hidden>下载结果</button>
+
+          <p class="status" id="statusMessage" role="status" aria-live="polite">
+            选择图片后即可处理。
           </p>
-        </form>
+        </aside>
+      </div>
 
-        <section class="preview-panel" aria-labelledby="preview-title">
-          <div class="panel-heading">
-            <div>
-              <p class="panel-kicker">PREVIEW</p>
-              <h2 id="preview-title">处理预览</h2>
-            </div>
-            <span class="result-pill is-hidden" id="resultPill">已完成</span>
-          </div>
+      <footer>
+        <span>文件不上传 · 处理后自动清理</span>
+        <span>JPG · PNG · WebP · 最大 20 MB</span>
+      </footer>
 
-          <div class="preview-stage is-empty" id="previewStage">
-            <div class="empty-preview" id="emptyPreview">
-              <span class="empty-grid" aria-hidden="true"></span>
-              <p>图片预览会显示在这里</p>
-            </div>
-
-            <div class="image-preview is-hidden" id="imagePreview">
-              <figure>
-                <figcaption>处理前</figcaption>
-                <div class="image-frame">
-                  <img id="sourcePreview" alt="待处理图片预览" />
-                </div>
-              </figure>
-              <figure class="is-hidden" id="resultFigure">
-                <figcaption>处理后</figcaption>
-                <div class="image-frame result-frame">
-                  <img id="resultPreview" alt="处理后图片预览" />
-                </div>
-              </figure>
-            </div>
-          </div>
-
-          <div class="result-actions is-hidden" id="resultActions">
-            <div class="result-copy">
-              <strong id="resultTitle">处理完成</strong>
-              <span id="resultDetail">可以下载结果图片。</span>
-            </div>
-            <button class="download-button" id="downloadButton" type="button">下载图片</button>
-          </div>
-        </section>
-      </section>
-
-      <section class="notes" aria-label="使用说明">
-        <article>
-          <span>01</span>
-          <h2>本地处理</h2>
-          <p>图片由本机 Python 服务处理，不上传到第三方平台。</p>
-        </article>
-        <article>
-          <span>02</span>
-          <h2>可见标记</h2>
-          <p>第一版仅处理已注册的可见 AI 标记，不移除来源元数据。</p>
-        </article>
-        <article>
-          <span>03</span>
-          <h2>结果边界</h2>
-          <p>复杂纹理可能需要人工复核；无命中不代表图片不存在其他信号。</p>
-        </article>
-      </section>
+      <input id="imageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden />
     </main>
-
-    <footer class="site-footer">
-      <span>Powered by remove-ai-watermarks</span>
-      <span>仅用于合法、获授权的内容处理</span>
-    </footer>
-
     <script src="/assets/app.js" defer></script>
   </body>
 </html>

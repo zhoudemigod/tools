@@ -1,6 +1,7 @@
 .design-work/
 .venv/
 .pytest_cache/
+.model-cache/
 __pycache__/
 *.py[cod]
 .coverage
