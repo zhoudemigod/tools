@@ -1,2 +1,7 @@
 .design-work/
-
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.coverage
+htmlcov/

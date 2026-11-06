@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Cleanframe · AI 水印处理</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23151714'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Georgia' font-size='18' font-style='italic' fill='%23f4f1e9'%3EC%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Cleanframe 首页">
+        <span class="brand-mark" aria-hidden="true">C</span>
+        <span>Cleanframe</span>
+      </a>
+      <span class="local-badge">LOCAL · CPU</span>
+    </header>
+
+    <main class="page-shell">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">VISIBLE MARK CLEANER</p>
+        <h1 id="page-title">让画面回到作品本身。</h1>
+        <p class="intro-copy">
+          自动识别并修复常见的可见 AI 标记。文件只在本机临时处理，完成后立即清理。
+        </p>
+      </section>
+
+      <section class="workspace" aria-label="图片处理工作区">
+        <form class="upload-panel" id="uploadForm">
+          <div
+            class="drop-zone"
+            id="dropZone"
+            role="button"
+            tabindex="0"
+            aria-controls="imageInput"
+            aria-describedby="uploadHint"
+          >
+            <input
+              id="imageInput"
+              name="image"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+            />
+            <span class="upload-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+              </svg>
+            </span>
+            <strong>拖入图片，或点击选择</strong>
+            <span id="uploadHint">JPG、PNG、WebP · 最大 20 MB</span>
+          </div>
+
+          <div class="file-summary is-hidden" id="fileSummary" aria-live="polite">
+            <div class="file-copy">
+              <strong id="fileName">—</strong>
+              <span id="fileMeta">—</span>
+            </div>
+            <button class="text-button" id="replaceButton" type="button">更换</button>
+          </div>
+
+          <label class="consent-row">
+            <input id="authorizedInput" name="authorized" type="checkbox" value="true" />
+            <span>
+              我确认拥有该图片或已获得编辑授权，并会遵守适用的 AI 内容标识规则。
+            </span>
+          </label>
+
+          <button class="primary-button" id="processButton" type="submit" disabled>
+            <span class="button-label">开始处理</span>
+            <span class="button-loader" aria-hidden="true"></span>
+          </button>
+
+          <p class="status-message" id="statusMessage" role="status" aria-live="polite">
+            选择图片后即可开始。
+          </p>
+        </form>
+
+        <section class="preview-panel" aria-labelledby="preview-title">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">PREVIEW</p>
+              <h2 id="preview-title">处理预览</h2>
+            </div>
+            <span class="result-pill is-hidden" id="resultPill">已完成</span>
+          </div>
+
+          <div class="preview-stage is-empty" id="previewStage">
+            <div class="empty-preview" id="emptyPreview">
+              <span class="empty-grid" aria-hidden="true"></span>
+              <p>图片预览会显示在这里</p>
+            </div>
+
+            <div class="image-preview is-hidden" id="imagePreview">
+              <figure>
+                <figcaption>处理前</figcaption>
+                <div class="image-frame">
+                  <img id="sourcePreview" alt="待处理图片预览" />
+                </div>
+              </figure>
+              <figure class="is-hidden" id="resultFigure">
+                <figcaption>处理后</figcaption>
+                <div class="image-frame result-frame">
+                  <img id="resultPreview" alt="处理后图片预览" />
+                </div>
+              </figure>
+            </div>
+          </div>
+
+          <div class="result-actions is-hidden" id="resultActions">
+            <div class="result-copy">
+              <strong id="resultTitle">处理完成</strong>
+              <span id="resultDetail">可以下载结果图片。</span>
+            </div>
+            <button class="download-button" id="downloadButton" type="button">下载图片</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="notes" aria-label="使用说明">
+        <article>
+          <span>01</span>
+          <h2>本地处理</h2>
+          <p>图片由本机 Python 服务处理，不上传到第三方平台。</p>
+        </article>
+        <article>
+          <span>02</span>
+          <h2>可见标记</h2>
+          <p>第一版仅处理已注册的可见 AI 标记，不移除来源元数据。</p>
+        </article>
+        <article>
+          <span>03</span>
+          <h2>结果边界</h2>
+          <p>复杂纹理可能需要人工复核；无命中不代表图片不存在其他信号。</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>Powered by remove-ai-watermarks</span>
+      <span>仅用于合法、获授权的内容处理</span>
+    </footer>
+
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>
