@@ -89,14 +89,12 @@
     .brand-mark {
       display: grid;
       place-items: center;
-      width: 30px;
-      height: 30px;
-      border-radius: 8px;
-      background: var(--accent);
-      color: var(--accent-ink);
-      font-size: 17px;
-      transform: rotate(-3deg);
+      width: 32px;
+      height: 32px;
+      flex: none;
     }
+
+    .brand-mark svg { display: block; width: 100%; height: 100%; }
 
     .brand small {
       display: block;
@@ -746,14 +744,113 @@
       .top-actions { gap: 5px; }
       .button { padding: 0 9px; }
     }
+
+    .brand-mark {
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      cursor: pointer;
+      transition: filter 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+    }
+    .brand-mark:hover { filter: brightness(1.08); transform: scale(1.04); }
+    .brand-mark[aria-expanded="true"] { box-shadow: 0 0 0 3px rgba(65, 134, 245, .2); }
+    .brand-mark:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .resource-backdrop {
+      position: fixed;
+      z-index: 29;
+      inset: var(--header-height) 0 0;
+      background: rgba(4, 5, 4, .68);
+      backdrop-filter: blur(3px);
+    }
+    .resource-dialog {
+      position: fixed;
+      z-index: 30;
+      top: calc(var(--header-height) + 12px);
+      left: 18px;
+      width: min(360px, calc(100vw - 36px));
+      max-height: calc(100vh - var(--header-height) - 30px);
+      overflow: auto;
+      padding: 18px;
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .56);
+    }
+    .resource-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .resource-dialog-title { margin: 0; color: var(--text); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+    .resource-close {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .resource-close:hover { border-color: #686d5e; background: #292c27; color: var(--text); }
+    .resource-note { margin: 7px 0 16px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .resource-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+    .resource-link {
+      min-height: 48px;
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) 14px;
+      align-items: center;
+      gap: 9px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: #d1d4cb;
+      text-decoration: none;
+    }
+    .resource-link:hover { border-color: #4b5046; background: var(--panel-soft); }
+    .resource-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .resource-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px; background: #121310; color: #829078; }
+    .resource-copy { min-width: 0; }
+    .resource-copy strong, .resource-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .resource-copy strong { font-size: 11px; }
+    .resource-copy span { margin-top: 2px; color: #747b70; font-size: 10px; }
+    .resource-arrow { color: #747b70; font-size: 13px; }
+    .resource-qr { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .resource-qr h3 { margin: 0 0 10px; color: #cfd2c8; font-size: 11px; }
+    .resource-qr-placeholder {
+      width: 112px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      margin: 0 auto;
+      border: 1px dashed #555b4f;
+      border-radius: 8px;
+      background-color: #121310;
+      background-image: linear-gradient(45deg, #20231e 25%, transparent 25%, transparent 75%, #20231e 75%), linear-gradient(45deg, #20231e 25%, transparent 25%, transparent 75%, #20231e 75%);
+      background-position: 0 0, 6px 6px;
+      background-size: 12px 12px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    .resource-qr p { margin: 9px 0 0; color: var(--muted); text-align: center; font-size: 10px; }
+    @media (max-width: 560px) {
+      .resource-dialog { left: 12px; width: calc(100vw - 24px); }
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <div class="brand-mark" aria-hidden="true">F</div>
-        <div>FOLIO <small>POSTER STUDIO</small></div>
+        <button class="brand-mark" id="brandTrigger" type="button" aria-haspopup="dialog" aria-expanded="true" aria-controls="resourceDialog" aria-label="打开或关闭相关链接">
+          <svg viewBox="0 0 1024 1024" focusable="false">
+            <path d="M512 512m-512 0a512 512 0 1 0 1024 0 512 512 0 1 0-1024 0Z" fill="#4186F5"></path>
+            <path d="M611.944 302.056c0-15.701 2.75-30.802 7.816-44.917a384.238 384.238 0 0 0-186.11 2.956c-74.501-50.063-93.407-71.902-107.975-39.618a136.243 136.243 0 0 0-3.961 102.287 149.515 149.515 0 0 0-39.949 104.806c0 148.743 92.139 181.875 179.961 191.61a83.898 83.898 0 0 0-25.192 51.863c-40.708 22.518-91.94 8.261-115.181-32.058a83.117 83.117 0 0 0-60.466-39.98s-38.871-.361-2.879 23.408a102.97 102.97 0 0 1 43.912 56.906s23.398 75.279 133.531 51.863v65.913c0 10.443 13.548 42.63 102.328 42.63 71.275 0 94.913-30.385 94.913-42.987V690.485a90.052 90.052 0 0 0-26.996-72.03c83.996-9.381 173.328-40.204 179.6-176.098a164.706 164.706 0 0 1-21.129 1.365c-84.07 0-152.223-63.426-152.223-141.666z" fill="#FFFFFF"></path>
+            <path d="M743.554 322.765a136.267 136.267 0 0 0-3.961-102.289s-32.396-10.445-107.979 39.618a385.536 385.536 0 0 0-11.853-2.956 132.623 132.623 0 0 0-7.816 44.917c0 78.24 68.152 141.667 152.222 141.667 7.171 0 14.222-.472 21.129-1.365.231-5.03.363-10.187.363-15.509a149.534 149.534 0 0 0-42.105-104.083z" fill="#FFFFFF" opacity=".4"></path>
+          </svg>
+        </button>
+        <div>开源好物集 <small>POSTER DESIGN</small></div>
       </div>
       <div class="header-controls" aria-label="画布视图控制">
         <div class="canvas-summary"><span>画布</span><strong id="canvasInfo">800 × 1000</strong></div>
@@ -787,6 +884,45 @@
         </button>
       </div>
     </header>
+
+    <div class="resource-backdrop" id="resourceBackdrop" aria-hidden="true"></div>
+    <aside class="resource-dialog" id="resourceDialog" role="dialog" aria-modal="true" aria-labelledby="resourceDialogTitle">
+      <div class="resource-dialog-header">
+        <h2 class="resource-dialog-title" id="resourceDialogTitle">相关链接</h2>
+        <button class="resource-close" id="resourceClose" type="button" aria-label="关闭相关链接" title="关闭相关链接">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+        </button>
+      </div>
+      <p class="resource-note">了解项目、查看源码或参与共建。</p>
+      <ul class="resource-list">
+        <li>
+          <a class="resource-link" href="https://www.huima123.com" target="_blank" rel="noopener noreferrer">
+            <span class="resource-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.2 2.5 3.3 5.5 3.3 9S14.2 18.5 12 21c-2.2-2.5-3.3-5.5-3.3-9S9.8 5.5 12 3Z"></path></svg></span>
+            <span class="resource-copy"><strong>公司官网</strong><span>huima123.com</span></span>
+            <span class="resource-arrow" aria-hidden="true">↗</span>
+          </a>
+        </li>
+        <li>
+          <a class="resource-link" href="https://gitee.com/HD85512b/tools" target="_blank" rel="noopener noreferrer">
+            <span class="resource-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M6.5 5.5h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-10a1 1 0 0 1 1-1Z"></path><path d="M9 9h6v6H9z"></path></svg></span>
+            <span class="resource-copy"><strong>码云仓库</strong><span>Gitee</span></span>
+            <span class="resource-arrow" aria-hidden="true">↗</span>
+          </a>
+        </li>
+        <li>
+          <a class="resource-link" href="https://github.com/zhoudemigod/tools" target="_blank" rel="noopener noreferrer">
+            <span class="resource-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.82a9.6 9.6 0 0 1 2.5.34c1.91-1.3 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" fill="currentColor" stroke="none"></path></svg></span>
+            <span class="resource-copy"><strong>GitHub 仓库</strong><span>查看项目源码</span></span>
+            <span class="resource-arrow" aria-hidden="true">↗</span>
+          </a>
+        </li>
+      </ul>
+      <section class="resource-qr" aria-labelledby="resourceQrTitle">
+        <h3 id="resourceQrTitle">微信小程序</h3>
+        <div class="resource-qr-placeholder" role="img" aria-label="微信小程序二维码占位符">二维码<br>占位</div>
+        <p>二维码即将上线，敬请期待。</p>
+      </section>
+    </aside>
 
     <main class="workspace">
       <aside class="sidebar left" aria-label="设计属性">
@@ -920,10 +1056,88 @@
   <script>
     "use strict";
 
+    /**
+     * 默认案例的矢量工作台主视觉。使用内联 SVG 保持单文件交付，并让 PNG 导出与编辑预览一致。
+     */
+    const productShowcaseSvg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="684" height="410" viewBox="0 0 684 410">
+        <defs>
+          <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#365BFF"/>
+            <stop offset="1" stop-color="#1D35D6"/>
+          </linearGradient>
+          <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+            <path d="M24 0H0V24" fill="none" stroke="#BECBFF" stroke-opacity=".18" stroke-width="1"/>
+          </pattern>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+            <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#071241" flood-opacity=".28"/>
+          </filter>
+        </defs>
+        <rect width="684" height="410" rx="30" fill="url(#panel)"/>
+        <rect width="684" height="410" rx="30" fill="url(#grid)"/>
+        <circle cx="31" cy="30" r="5" fill="#FF6C62"/>
+        <circle cx="49" cy="30" r="5" fill="#FFD66B"/>
+        <circle cx="67" cy="30" r="5" fill="#81E7B0"/>
+        <rect x="92" y="25" width="96" height="10" rx="5" fill="#CFD8FF" fill-opacity=".5"/>
+        <rect x="558" y="23" width="98" height="14" rx="7" fill="#AFC0FF" fill-opacity=".35"/>
+
+        <rect x="22" y="58" width="124" height="330" rx="20" fill="#111A3D"/>
+        <rect x="40" y="80" width="72" height="9" rx="4.5" fill="#FFFFFF" fill-opacity=".82"/>
+        <rect x="40" y="101" width="44" height="6" rx="3" fill="#AFC0FF" fill-opacity=".48"/>
+        <rect x="36" y="132" width="94" height="45" rx="11" fill="#3154FF" stroke="#7F96FF"/>
+        <path d="M54 151h18m-9-9v18" stroke="#EEF2FF" stroke-width="2" stroke-linecap="round"/>
+        <rect x="82" y="146" width="31" height="6" rx="3" fill="#EEF2FF" fill-opacity=".76"/>
+        <rect x="36" y="187" width="94" height="45" rx="11" fill="#1A2654"/>
+        <circle cx="63" cy="209" r="9" fill="#D7FF69"/>
+        <rect x="82" y="205" width="31" height="6" rx="3" fill="#EEF2FF" fill-opacity=".5"/>
+        <rect x="36" y="242" width="94" height="45" rx="11" fill="#1A2654"/>
+        <rect x="53" y="258" width="19" height="14" rx="2" fill="none" stroke="#EEF2FF" stroke-opacity=".7" stroke-width="2"/>
+        <rect x="82" y="261" width="31" height="6" rx="3" fill="#EEF2FF" fill-opacity=".5"/>
+        <path d="M39 344h88" stroke="#8EA3FF" stroke-opacity=".36"/>
+        <rect x="40" y="360" width="50" height="6" rx="3" fill="#EEF2FF" fill-opacity=".28"/>
+
+        <g filter="url(#shadow)" transform="rotate(-2 323 218)">
+          <rect x="171" y="67" width="306" height="304" rx="10" fill="#FAFBFF"/>
+          <rect x="192" y="89" width="74" height="8" rx="4" fill="#3154FF"/>
+          <rect x="192" y="111" width="172" height="7" rx="3.5" fill="#C7D1F3"/>
+          <rect x="192" y="129" width="122" height="7" rx="3.5" fill="#DDE3F8"/>
+          <rect x="192" y="171" width="238" height="14" rx="7" fill="#111A3D"/>
+          <rect x="192" y="196" width="196" height="14" rx="7" fill="#111A3D"/>
+          <rect x="192" y="230" width="88" height="7" rx="3.5" fill="#8C9BCD"/>
+          <rect x="192" y="247" width="146" height="7" rx="3.5" fill="#C7D1F3"/>
+          <rect x="192" y="304" width="118" height="32" rx="16" fill="#D7FF69"/>
+          <path d="M284 320h10m-4-4 4 4-4 4" fill="none" stroke="#111A3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M159 77v-20h20M489 77v-20h-20M159 359v20h20M489 359v20h-20" fill="none" stroke="#D7FF69" stroke-width="3"/>
+          <rect x="184" y="158" width="258" height="100" rx="4" fill="none" stroke="#3154FF" stroke-width="2" stroke-dasharray="7 6"/>
+          <circle cx="184" cy="158" r="5" fill="#FAFBFF" stroke="#3154FF" stroke-width="2"/>
+          <circle cx="442" cy="158" r="5" fill="#FAFBFF" stroke="#3154FF" stroke-width="2"/>
+          <circle cx="184" cy="258" r="5" fill="#FAFBFF" stroke="#3154FF" stroke-width="2"/>
+          <circle cx="442" cy="258" r="5" fill="#FAFBFF" stroke="#3154FF" stroke-width="2"/>
+        </g>
+
+        <rect x="506" y="58" width="156" height="330" rx="20" fill="#111A3D"/>
+        <rect x="526" y="80" width="55" height="9" rx="4.5" fill="#FFFFFF" fill-opacity=".82"/>
+        <rect x="526" y="110" width="116" height="72" rx="12" fill="#1A2654"/>
+        <circle cx="546" cy="132" r="7" fill="#D7FF69"/>
+        <rect x="561" y="128" width="60" height="7" rx="3.5" fill="#EEF2FF" fill-opacity=".65"/>
+        <rect x="540" y="151" width="82" height="7" rx="3.5" fill="#7186D4" fill-opacity=".65"/>
+        <rect x="526" y="194" width="116" height="72" rx="12" fill="#1A2654"/>
+        <rect x="540" y="210" width="88" height="8" rx="4" fill="#EEF2FF" fill-opacity=".66"/>
+        <rect x="540" y="229" width="60" height="7" rx="3.5" fill="#7186D4" fill-opacity=".65"/>
+        <rect x="526" y="278" width="116" height="46" rx="12" fill="#3154FF" stroke="#7F96FF"/>
+        <path d="M546 302h17m-8.5-8.5V310" stroke="#EEF2FF" stroke-width="2" stroke-linecap="round"/>
+        <rect x="575" y="298" width="45" height="7" rx="3.5" fill="#EEF2FF" fill-opacity=".78"/>
+        <rect x="526" y="344" width="72" height="7" rx="3.5" fill="#EEF2FF" fill-opacity=".28"/>
+        <rect x="526" y="360" width="99" height="7" rx="3.5" fill="#EEF2FF" fill-opacity=".18"/>
+      </svg>`;
+
+    /** 可直接作为图片图层使用的内联 SVG 数据地址。 */
+    const productShowcaseSource = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(productShowcaseSvg)}`;
+
     /** 海报编辑器的全部运行状态，尺寸单位均为设计像素。 */
     const state = {
       canvas: { width: 800, height: 1000 },
-      background: { type: "gradient", color: "#10271f", colorTwo: "#2f704b", angle: 145, src: null, imageName: null },
+      background: { type: "gradient", color: "#f7f9ff", colorTwo: "#dce5ff", angle: 145, src: null, imageName: null },
       zoom: 58,
       selectedLayerId: "title-layer",
       editingLayerId: null,
@@ -933,24 +1147,53 @@
       interaction: null,
       layers: [
         {
-          id: "eyebrow-layer", type: "text", name: "顶部说明", content: "FOLIO / VISUAL NOTES  2026", x: 84, y: 74,
-          width: 620, height: 32, fontSize: 22, fontFamily: "Space Grotesk", fontWeight: 600,
-          italic: false, align: "left", color: "#d7ff45", letterSpacing: 2, visible: true
+          id: "workspace-visual", type: "image", name: "产品工作台主视觉", src: productShowcaseSource,
+          x: 58, y: 362, width: 684, height: 410, visible: true
         },
         {
-          id: "title-layer", type: "text", name: "主标题", content: "CREATE\nMORE", x: 78, y: 188,
-          width: 650, height: 222, fontSize: 112, fontFamily: "Space Grotesk", fontWeight: 700,
-          italic: false, align: "left", color: "#f3f1e9", letterSpacing: -5, visible: true
+          id: "eyebrow-layer", type: "text", name: "产品定位", content: "BROWSER-NATIVE  /  POSTER STUDIO", x: 62, y: 58,
+          width: 450, height: 28, fontSize: 17, fontFamily: "Space Grotesk", fontWeight: 700,
+          italic: false, align: "left", color: "#3154ff", letterSpacing: 2, visible: true
         },
         {
-          id: "subtitle-layer", type: "text", name: "副标题", content: "让每一个想法，都有清晰的视觉表达。", x: 84, y: 765,
-          width: 470, height: 70, fontSize: 29, fontFamily: "Noto Sans SC", fontWeight: 500,
-          italic: false, align: "left", color: "#f3f1e9", letterSpacing: 1, visible: true
+          id: "brand-layer", type: "text", name: "产品名称", content: "FOLIO®", x: 641, y: 57,
+          width: 100, height: 28, fontSize: 18, fontFamily: "Space Grotesk", fontWeight: 700,
+          italic: false, align: "right", color: "#111a3d", letterSpacing: 1, visible: true
         },
         {
-          id: "footer-layer", type: "text", name: "页脚信息", content: "DESIGN  ·  TYPE  ·  IMAGE", x: 84, y: 900,
-          width: 620, height: 34, fontSize: 18, fontFamily: "Space Grotesk", fontWeight: 600,
-          italic: false, align: "left", color: "#a8bcad", letterSpacing: 4, visible: true
+          id: "title-layer", type: "text", name: "主标题", content: "把想法，\n做成海报。", x: 58, y: 112,
+          width: 680, height: 160, fontSize: 76, fontFamily: "Noto Sans SC", fontWeight: 900,
+          italic: false, align: "left", color: "#111a3d", letterSpacing: -4, visible: true
+        },
+        {
+          id: "subtitle-layer", type: "text", name: "产品说明", content: "一款开箱即用的浏览器海报设计工具。\n无需安装，创意只留在本地。", x: 62, y: 282,
+          width: 650, height: 54, fontSize: 21, fontFamily: "Noto Sans SC", fontWeight: 500,
+          italic: false, align: "left", color: "#4d5b87", letterSpacing: 0, visible: true
+        },
+        {
+          id: "feature-one-layer", type: "text", name: "功能一", content: "01  浏览器打开", x: 62, y: 814,
+          width: 200, height: 28, fontSize: 17, fontFamily: "Noto Sans SC", fontWeight: 700,
+          italic: false, align: "left", color: "#111a3d", letterSpacing: 0, visible: true
+        },
+        {
+          id: "feature-two-layer", type: "text", name: "功能二", content: "02  本地处理", x: 304, y: 814,
+          width: 180, height: 28, fontSize: 17, fontFamily: "Noto Sans SC", fontWeight: 700,
+          italic: false, align: "left", color: "#111a3d", letterSpacing: 0, visible: true
+        },
+        {
+          id: "feature-three-layer", type: "text", name: "功能三", content: "03  一键导出", x: 548, y: 814,
+          width: 180, height: 28, fontSize: 17, fontFamily: "Noto Sans SC", fontWeight: 700,
+          italic: false, align: "left", color: "#111a3d", letterSpacing: 0, visible: true
+        },
+        {
+          id: "cta-layer", type: "text", name: "行动号召", content: "现在开始设计  ↗", x: 62, y: 892,
+          width: 360, height: 48, fontSize: 34, fontFamily: "Noto Sans SC", fontWeight: 800,
+          italic: false, align: "left", color: "#3154ff", letterSpacing: -1, visible: true
+        },
+        {
+          id: "footer-layer", type: "text", name: "页脚信息", content: "LOCAL  /  PRIVATE  /  FAST                          FOLIO.POSTER — 2026", x: 62, y: 963,
+          width: 676, height: 24, fontSize: 12, fontFamily: "Space Grotesk", fontWeight: 700,
+          italic: false, align: "left", color: "#7180ad", letterSpacing: 1, visible: true
         }
       ]
     };
@@ -988,7 +1231,11 @@
       previewBadge: document.querySelector("#previewBadge"),
       toast: document.querySelector("#toast"),
       moveUp: document.querySelector("#moveLayerUpButton"),
-      moveDown: document.querySelector("#moveLayerDownButton")
+      moveDown: document.querySelector("#moveLayerDownButton"),
+      brandTrigger: document.querySelector("#brandTrigger"),
+      resourceDialog: document.querySelector("#resourceDialog"),
+      resourceBackdrop: document.querySelector("#resourceBackdrop"),
+      resourceClose: document.querySelector("#resourceClose")
     };
 
     /** 当前提示信息的自动隐藏计时器。 */
@@ -2422,6 +2669,28 @@
     }
 
     /**
+     * 显示或隐藏品牌相关链接弹窗，并同步 Logo 的可访问状态。
+     * @param {boolean} open 弹窗是否可见
+     * @returns {void}
+     */
+    function setResourceDialogOpen(open) {
+      elements.resourceDialog.hidden = !open;
+      elements.resourceBackdrop.hidden = !open;
+      elements.brandTrigger.setAttribute("aria-expanded", String(open));
+    }
+
+    /** 点击品牌 Logo 时切换相关链接弹窗。 */
+    function toggleResourceDialog() {
+      setResourceDialogOpen(elements.brandTrigger.getAttribute("aria-expanded") !== "true");
+    }
+
+    /** 关闭相关链接弹窗并将焦点交还品牌 Logo。 */
+    function closeResourceDialog() {
+      setResourceDialogOpen(false);
+      elements.brandTrigger.focus();
+    }
+
+    /**
      * 处理全局快捷键，包括删除图层与退出预览。
      * @param {KeyboardEvent} event 页面键盘事件
      * @returns {void}
@@ -2431,19 +2700,24 @@
       const tagName = document.activeElement?.tagName || "";
       /** 焦点是否位于可输入控件中。 */
       const isTyping = tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || Boolean(document.activeElement?.isContentEditable);
-      // 1. ESC 优先关闭新增图层菜单，维持图层面板的键盘可达性。
+      // 1. ESC 优先关闭品牌资源弹窗。
+      if (event.key === "Escape" && elements.brandTrigger.getAttribute("aria-expanded") === "true") {
+        setResourceDialogOpen(false);
+        return;
+      }
+      // 2. ESC 关闭新增图层菜单，维持图层面板的键盘可达性。
       if (event.key === "Escape" && !elements.layerAddMenu.hidden) {
         closeLayerAddMenu();
         elements.addLayerButton.focus();
         return;
       }
-      // 2. ESC 用于退出预览，避免与文字输入冲突。
+      // 3. ESC 用于退出预览，避免与文字输入冲突。
       if (event.key === "Escape" && state.preview) {
         state.preview = false;
         render();
         return;
       }
-      // 3. 非输入状态下允许 Delete 或 Backspace 删除选中图层。
+      // 4. 非输入状态下允许 Delete 或 Backspace 删除选中图层。
       if (!isTyping && (event.key === "Delete" || event.key === "Backspace") && state.selectedLayerId) {
         event.preventDefault();
         deleteLayer(state.selectedLayerId);
@@ -2652,7 +2926,14 @@
      * @returns {void}
      */
     function bindEvents() {
-      // 1. 绑定画布、背景和文字属性交互。
+      // 1. 绑定品牌相关链接弹窗。
+      elements.brandTrigger.addEventListener("click", toggleResourceDialog);
+      elements.resourceClose.addEventListener("click", closeResourceDialog);
+      elements.resourceBackdrop.addEventListener("click", function closeResourceDialogFromBackdrop() {
+        setResourceDialogOpen(false);
+      });
+
+      // 2. 绑定画布、背景和文字属性交互。
       document.querySelector("#ratioGrid").addEventListener("click", handleRatioClick);
       document.querySelector("#applySizeButton").addEventListener("click", handleApplyCustomSize);
       document.querySelector("#backgroundSwatches").addEventListener("click", handleBackgroundSwatch);
@@ -2669,7 +2950,7 @@
       document.querySelector(".style-row").addEventListener("click", handleAlignmentClick);
       elements.letterSpacing.addEventListener("input", handleLetterSpacingInput);
 
-      // 2. 绑定图层、画布指针与全局快捷操作。
+      // 3. 绑定图层、画布指针与全局快捷操作。
       document.querySelector("#addTextButton").addEventListener("click", addTextLayer);
       elements.addLayerButton.addEventListener("click", toggleLayerAddMenu);
       document.querySelector("#addTextMenuButton").addEventListener("click", handleAddTextFromMenu);
@@ -2700,6 +2981,7 @@
     syncAllTextLayerBounds();
     bindEvents();
     render();
+    setResourceDialogOpen(true);
     // 2. 字体和首帧布局就绪后分别校正文字尺寸与画布适配比例。
     document.fonts.ready.then(handleFontsReady);
     window.requestAnimationFrame(fitCanvasToViewport);

@@ -90,13 +90,266 @@
     @media (max-width: 1100px) { .layout { grid-template-columns: 200px minmax(0, 1fr); } .layout.resources-collapsed { grid-template-columns: 54px minmax(0, 1fr); } .settings-panel { grid-column: 1 / -1; } }
     @media (max-width: 760px) { .app { padding: 16px 12px 10px; } header { align-items: flex-start; flex-direction: column; gap: 10px; margin-bottom: 14px; } .brand-copy { align-items: flex-start; flex-direction: column; gap: 2px; } h1 { padding: 0; border: 0; font-size: 13px; } .header-note { width: 100%; justify-content: space-between; gap: 12px; } .header-note p { font-size: 12px; } .layout, .layout.resources-collapsed { grid-template-columns: minmax(0, 1fr); } .resource-panel, .viewer, .settings-panel { grid-column: 1; } .stage { height: min(66vh, 560px); min-height: 360px; padding: 16px; } #photo { max-height: calc(min(66vh, 560px) - 32px); } aside { padding: 20px; } .resources-collapsed .resource-panel { padding: 10px 14px; } footer { flex-wrap: wrap; } }
     @media (prefers-reduced-motion: reduce) { .layout, .resource-panel, .resource-link { transition-duration: .01ms; } }
+
+    /* Open Goodies workbench — shares the visual system of the poster studio. */
+    :root {
+      color-scheme: dark;
+      color: #f3f1e9;
+      background: #111210;
+      accent-color: #d7ff45;
+      --panel: #181a17;
+      --panel-soft: #1e201d;
+      --panel-raised: #242622;
+      --line: #30332e;
+      --line-strong: #44483f;
+      --text: #f3f1e9;
+      --muted: #959a8d;
+      --accent: #d7ff45;
+      --accent-ink: #171b09;
+      --brand: #4186f5;
+    }
+    body { min-width: 320px; background: #111210; color: var(--text); }
+    button:focus-visible, input:focus-visible, .image-wrap:focus-visible, .resource-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .app {
+      width: 100%;
+      max-width: none;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: 64px minmax(0, 1fr) auto;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      position: relative;
+      z-index: 10;
+      min-height: 64px;
+      margin: 0;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: #151613;
+    }
+    .brand { gap: 11px; color: var(--text); }
+    .brand-logo { width: 32px; height: 32px; }
+    .brand-copy { display: grid; align-items: center; gap: 1px; }
+    .brand-name { color: var(--text); font-size: 15px; font-weight: 750; letter-spacing: .02em; white-space: nowrap; }
+    h1 {
+      padding: 0;
+      border: 0;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .header-note { gap: 12px; }
+    .header-note p { color: var(--muted); font-size: 12px; }
+    .privacy {
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel-soft);
+      color: #bdc2b5;
+      font-size: 11px;
+    }
+    .privacy::before { color: var(--accent); }
+    .layout {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 216px minmax(380px, 1fr) 272px;
+      gap: 0;
+      align-items: stretch;
+      transition: grid-template-columns 180ms ease;
+    }
+    .layout.resources-collapsed { grid-template-columns: 54px minmax(380px, 1fr) 272px; }
+    .viewer, aside {
+      border: 0;
+      border-radius: 0;
+      background: var(--panel);
+      color: var(--text);
+    }
+    .viewer {
+      min-width: 0;
+      border-right: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      background: #0f100e;
+    }
+    .bar {
+      min-height: 52px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: #151613;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .02em;
+    }
+    #filename { color: var(--text); font-weight: 650; }
+    .stage {
+      position: relative;
+      height: clamp(560px, calc(100vh - 148px), 860px);
+      min-height: 0;
+      padding: 28px;
+      overflow: hidden;
+      background-color: #10110f;
+      background-image: radial-gradient(circle, #2a2c27 .8px, transparent .8px);
+      background-size: 18px 18px;
+    }
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      pointer-events: none;
+      opacity: .42;
+      background:
+        linear-gradient(var(--accent), var(--accent)) left top / 18px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) left top / 1px 18px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) right top / 18px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) right top / 1px 18px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) left bottom / 18px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) left bottom / 1px 18px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) right bottom / 18px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) right bottom / 1px 18px no-repeat;
+    }
+    .stage.dragging { background-color: #171b12; outline: 2px dashed var(--accent); outline-offset: -12px; }
+    .empty { position: relative; z-index: 1; max-width: 340px; }
+    .empty h2 { margin-bottom: 9px; color: var(--text); font-size: 22px; font-weight: 700; }
+    p { color: var(--muted); }
+    .icon {
+      width: 68px;
+      height: 68px;
+      margin-bottom: 20px;
+      border: 1px solid #4d5345;
+      border-radius: 50%;
+      background: var(--panel-raised);
+      color: var(--accent);
+      box-shadow: 0 0 0 8px rgba(215, 255, 69, .035);
+    }
+    .primary, .secondary, .panel-toggle {
+      min-height: 36px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: var(--panel-soft);
+      color: var(--text);
+      transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 120ms ease;
+    }
+    .primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 750; }
+    .primary:hover { background: #e0ff6d; }
+    .secondary:hover, .panel-toggle:hover { border-color: #686d5e; background: #292c27; color: var(--text); }
+    .primary:active, .secondary:active, .panel-toggle:active { transform: translateY(1px); }
+    .empty .primary { margin: 24px 0 10px; }
+    #photo { max-height: min(812px, calc(100vh - 204px)); box-shadow: 0 22px 60px rgba(0, 0, 0, .32); }
+    #lens {
+      border: 3px solid var(--accent);
+      background-color: #20231d;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, .7), 0 14px 38px rgba(0, 0, 0, .46);
+    }
+    #lens::after { border-color: rgba(215, 255, 69, .86); box-shadow: 0 0 0 1px rgba(0, 0, 0, .72); }
+    aside { padding: 20px; }
+    aside h2 { color: var(--text); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    .resource-panel { min-width: 0; padding: 16px; border-right: 0; }
+    .resource-panel-header { min-height: 36px; }
+    .resource-panel-header h2 { color: var(--text); font-size: 12px; }
+    .panel-toggle { min-width: 34px; min-height: 34px; font-size: 10px; }
+    .resource-panel-body { margin-top: 14px; }
+    .resource-section { margin-top: 18px; padding-top: 18px; border-top-color: var(--line); }
+    .section-heading { color: var(--muted); font-size: 10px; }
+    .resource-link { min-height: 44px; color: #cfd2c8; }
+    .resource-link:hover { background: var(--panel-soft); color: var(--text); }
+    .resource-icon { color: #7e8878; }
+    .resource-copy span, .resource-arrow { color: #73796e; }
+    .qr-placeholder {
+      border-color: #555b4f;
+      background: #121310;
+      color: var(--muted);
+    }
+    .qr-placeholder::before, .qr-placeholder::after { border-color: #77816f; }
+    .qr-copy strong { color: var(--text); }
+    .settings-panel { padding: 20px; }
+    .control { margin-bottom: 26px; }
+    .label-row { color: #d6d8d0; }
+    output { background: rgba(215, 255, 69, .08); color: var(--accent); }
+    input[type=range] { accent-color: var(--accent); }
+    .ends { color: #70766b; }
+    .buttons { padding-top: 18px; border-top-color: var(--line); }
+    .tip { border-left: 2px solid var(--accent); border-radius: 0; background: rgba(215, 255, 69, .05); color: var(--muted); }
+    .tip strong { color: var(--text); }
+    #status { color: var(--accent); }
+    footer {
+      min-height: 32px;
+      padding: 8px 18px;
+      border-top: 1px solid var(--line);
+      background: #151613;
+      color: #777d72;
+    }
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 200px minmax(0, 1fr); }
+      .layout.resources-collapsed { grid-template-columns: 54px minmax(0, 1fr); }
+      .settings-panel { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+      .settings-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+      .settings-panel > h2, .settings-panel > .buttons, .settings-panel > .tip, .settings-panel > #status { grid-column: 1 / -1; }
+    }
+    @media (max-width: 760px) {
+      .app { grid-template-rows: auto auto auto; padding: 0; }
+      header { position: sticky; top: 0; align-items: center; flex-direction: row; min-height: 64px; padding: 0 12px; margin: 0; }
+      .brand-copy { display: grid; gap: 1px; }
+      h1 { font-size: 9px; }
+      .header-note p { display: none; }
+      .privacy { padding: 5px 8px; }
+      .layout, .layout.resources-collapsed { grid-template-columns: minmax(0, 1fr); }
+      .viewer { grid-column: 1; grid-row: 1; border: 0; }
+      .settings-panel { grid-column: 1; grid-row: 2; display: block; border-top: 1px solid var(--line); }
+      .resource-panel { grid-column: 1; grid-row: 3; border-top: 1px solid var(--line); }
+      .stage { height: min(68vh, 600px); min-height: 380px; padding: 18px; }
+      #photo { max-height: calc(min(68vh, 600px) - 36px); }
+      footer { flex-wrap: wrap; }
+    }
+    @media (max-width: 440px) {
+      .privacy { display: none; }
+    }
+    .brand-trigger { display: grid; place-items: center; flex: none; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+    .brand-trigger:hover .brand-logo { filter: brightness(1.08); transform: scale(1.04); }
+    .brand-trigger[aria-expanded="true"] .brand-logo { box-shadow: 0 0 0 3px rgba(65, 134, 245, .2); }
+    .brand-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .brand-logo { transition: filter 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
+    .layout, .layout.resources-collapsed { grid-template-columns: minmax(380px, 1fr) 272px; }
+    .resource-backdrop { position: fixed; z-index: 29; inset: 64px 0 0; background: rgba(4, 5, 4, .68); backdrop-filter: blur(3px); }
+    .resource-panel, .resources-collapsed .resource-panel {
+      position: fixed;
+      z-index: 30;
+      top: 76px;
+      left: 18px;
+      width: min(360px, calc(100vw - 36px));
+      max-height: calc(100vh - 94px);
+      min-height: 0;
+      overflow: auto;
+      padding: 18px;
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .56);
+    }
+    .resources-collapsed .panel-title, .resources-collapsed .toggle-text { display: initial; }
+    .panel-toggle { width: auto; padding: 0 10px; }
+    @media (max-width: 1100px) {
+      .layout, .layout.resources-collapsed { grid-template-columns: minmax(0, 1fr) 260px; }
+      .settings-panel { grid-column: auto; display: block; border-top: 0; }
+      .settings-panel > h2, .settings-panel > .buttons, .settings-panel > .tip, .settings-panel > #status { grid-column: auto; }
+    }
+    @media (max-width: 760px) {
+      .layout, .layout.resources-collapsed { grid-template-columns: minmax(0, 1fr); }
+      .resource-panel, .resources-collapsed .resource-panel { top: 76px; left: 12px; width: calc(100vw - 24px); }
+    }
   </style>
 </head>
 <body>
   <main class="app">
     <header>
       <div class="brand">
+        <button class="brand-trigger" id="brandTrigger" type="button" aria-haspopup="dialog" aria-expanded="true" aria-controls="resourcePanel" aria-label="打开或关闭相关链接">
         <svg class="brand-logo" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="200" height="200" aria-hidden="true"><path d="M512 512m-512 0a512 512 0 1 0 1024 0 512 512 0 1 0-1024 0Z" fill="#4186F5"></path><path d="M611.944 302.056c0-15.701 2.75-30.802 7.816-44.917a384.238 384.238 0 0 0-186.11 2.956c-74.501-50.063-93.407-71.902-107.975-39.618a136.243 136.243 0 0 0-3.961 102.287 149.515 149.515 0 0 0-39.949 104.806c0 148.743 92.139 181.875 179.961 191.61a83.898 83.898 0 0 0-25.192 51.863c-40.708 22.518-91.94 8.261-115.181-32.058a83.117 83.117 0 0 0-60.466-39.98s-38.871-0.361-2.879 23.408a102.97 102.97 0 0 1 43.912 56.906s23.398 75.279 133.531 51.863v65.913c0 10.443 13.548 42.63 102.328 42.63 71.275 0 94.913-30.385 94.913-42.987V690.485a90.052 90.052 0 0 0-26.996-72.03c83.996-9.381 173.328-40.204 179.6-176.098a164.706 164.706 0 0 1-21.129 1.365c-84.07 0-152.223-63.426-152.223-141.666z" fill="#FFFFFF"></path><path d="M743.554 322.765a136.267 136.267 0 0 0-3.961-102.289s-32.396-10.445-107.979 39.618a385.536 385.536 0 0 0-11.853-2.956 132.623 132.623 0 0 0-7.816 44.917c0 78.24 68.152 141.667 152.222 141.667 7.171 0 14.222-0.472 21.129-1.365 0.231-5.03 0.363-10.187 0.363-15.509a149.534 149.534 0 0 0-42.105-104.083z" fill="#FFFFFF" opacity=".4"></path></svg>
+        </button>
         <div class="brand-copy">
           <span class="brand-name">开源好物集</span>
           <h1>图片放大镜</h1>
@@ -104,11 +357,12 @@
       </div>
       <div class="header-note"><p>放大图片，看清每一处细节。</p><span class="privacy">本地读取，保护隐私</span></div>
     </header>
+    <div class="resource-backdrop" id="resourceBackdrop" aria-hidden="true"></div>
     <div class="layout" id="layout">
-      <aside class="resource-panel" aria-labelledby="resource-panel-title">
+      <aside class="resource-panel" id="resourcePanel" role="dialog" aria-modal="true" aria-labelledby="resource-panel-title">
         <div class="resource-panel-header">
           <h2 class="panel-title" id="resource-panel-title">相关资源</h2>
-          <button class="panel-toggle" id="resourceToggle" type="button" aria-expanded="true" aria-controls="resourceBody" aria-label="收起相关资源" title="收起相关资源"><span class="toggle-icon" id="toggleIcon" aria-hidden="true">‹</span><span class="toggle-text" id="toggleText">收起</span></button>
+          <button class="panel-toggle" id="resourceToggle" type="button" aria-label="关闭相关链接" title="关闭相关链接"><span class="toggle-icon" id="toggleIcon" aria-hidden="true">×</span><span class="toggle-text" id="toggleText">关闭</span></button>
         </div>
         <div class="resource-panel-body" id="resourceBody">
           <nav class="resource-section" aria-label="开源好物集相关链接">
@@ -163,7 +417,7 @@
   <script>
     'use strict';
     /** UI elements, shared by the viewer and its settings. */
-    const ui = Object.fromEntries(['file','open','replace','reset','stage','empty','wrap','photo','lens','zoom','size','zoomValue','sizeValue','filename','dimensions','status','layout','resourceToggle','resourceBody','toggleIcon','toggleText'].map(id => [id, document.getElementById(id)]));
+    const ui = Object.fromEntries(['file','open','replace','reset','stage','empty','wrap','photo','lens','zoom','size','zoomValue','sizeValue','filename','dimensions','status','layout','brandTrigger','resourcePanel','resourceBackdrop','resourceToggle','resourceBody','toggleIcon','toggleText'].map(id => [id, document.getElementById(id)]));
     /** Relative lens position stays stable when the image resizes. */
     const point = { x: 0.5, y: 0.5 };
     /** Active object URL is released when another image replaces it. */
@@ -189,20 +443,14 @@
       Object.assign(ui.lens.style, { width: `${diameter}px`, height: `${diameter}px`, left: `${x - diameter / 2}px`, top: `${y - diameter / 2}px`, backgroundSize: `${bounds.width * zoom}px ${bounds.height * zoom}px`, backgroundPosition: `${(diameter - 6) / 2 - x * zoom}px ${(diameter - 6) / 2 - y * zoom}px` });
     }
 
-    /** Update the resource panel and expose its current state to assistive technology.
-     * @param {boolean} collapsed Whether the links and QR code should be hidden.
+    /** Show or hide the brand resource dialog and expose its current state to assistive technology.
+     * @param {boolean} open Whether the resource dialog should be visible.
      */
-    function setResourcesCollapsed(collapsed) {
-      // 1. Change the visual layout and remove hidden links from keyboard navigation.
-      ui.layout.classList.toggle('resources-collapsed', collapsed);
-      ui.resourceBody.hidden = collapsed;
-      // 2. Keep the button's visible label, tooltip, and expanded state consistent.
-      const action = collapsed ? '展开相关资源' : '收起相关资源';
-      ui.resourceToggle.setAttribute('aria-expanded', String(!collapsed));
-      ui.resourceToggle.setAttribute('aria-label', action);
-      ui.resourceToggle.title = action;
-      ui.toggleIcon.textContent = collapsed ? '›' : '‹';
-      ui.toggleText.textContent = collapsed ? '展开' : '收起';
+    function setResourceDialogOpen(open) {
+      ui.resourcePanel.hidden = !open;
+      ui.resourceBackdrop.hidden = !open;
+      ui.resourceBody.hidden = false;
+      ui.brandTrigger.setAttribute('aria-expanded', String(open));
       render();
     }
 
@@ -265,8 +513,11 @@
     ui.file.addEventListener('change', () => loadImage(ui.file.files[0]));
     ui.zoom.addEventListener('input', render);
     ui.size.addEventListener('input', render);
-    /** Toggle the left resource panel while preserving the image viewer's available space. */
-    ui.resourceToggle.addEventListener('click', () => setResourcesCollapsed(ui.resourceToggle.getAttribute('aria-expanded') === 'true'));
+    /** The logo toggles the resource dialog; its close button, backdrop and Escape dismiss it. */
+    ui.brandTrigger.addEventListener('click', () => setResourceDialogOpen(ui.brandTrigger.getAttribute('aria-expanded') !== 'true'));
+    ui.resourceToggle.addEventListener('click', () => { setResourceDialogOpen(false); ui.brandTrigger.focus(); });
+    ui.resourceBackdrop.addEventListener('click', () => setResourceDialogOpen(false));
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && ui.brandTrigger.getAttribute('aria-expanded') === 'true') setResourceDialogOpen(false); });
     /** Restore defaults without discarding the user's image. */
     ui.reset.addEventListener('click', () => { ui.zoom.value = '2'; ui.size.value = '180'; point.x = point.y = 0.5; render(); });
     ui.wrap.addEventListener('pointermove', moveLens);
@@ -293,7 +544,7 @@
     ui.stage.addEventListener('drop', event => { event.preventDefault(); ui.stage.classList.remove('dragging'); loadImage(event.dataTransfer.files[0]); });
     /** Recalculate sampling when responsive layout changes the preview size. */
     new ResizeObserver(render).observe(ui.photo);
-    setResourcesCollapsed(false);
+    setResourceDialogOpen(true);
   </script>
 </body>
 </html>

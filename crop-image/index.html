@@ -445,6 +445,296 @@
         scroll-behavior: auto !important;
       }
     }
+
+    /* Open Goodies workbench — aligned with the poster studio. */
+    :root {
+      color-scheme: dark;
+      color: #f3f1e9;
+      background: #111210;
+      accent-color: #d7ff45;
+      --control-panel-width: 310px;
+      --panel: #181a17;
+      --panel-soft: #1e201d;
+      --panel-raised: #242622;
+      --line: #30332e;
+      --line-strong: #44483f;
+      --text: #f3f1e9;
+      --muted: #959a8d;
+      --accent: #d7ff45;
+      --accent-ink: #171b09;
+      --brand: #4186f5;
+      --danger: #ff796f;
+    }
+    body { min-width: 320px; background: #111210; color: var(--text); }
+    button:focus-visible, input:focus-visible, select:focus-visible, canvas:focus-visible,
+    .resource-link:focus-visible, .file-picker:focus-within {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .skip-link { background: var(--accent); color: var(--accent-ink); }
+    .app { width: 100%; max-width: none; min-height: 100vh; margin: 0; padding: 0; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      min-height: 64px;
+      margin: 0;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: #151613;
+    }
+    .brand { gap: 11px; }
+    .brand-logo { width: 32px; height: 32px; }
+    .brand-copy { display: grid; align-items: center; gap: 1px; }
+    .brand-name { color: var(--text); font-size: 15px; font-weight: 750; letter-spacing: .02em; white-space: nowrap; }
+    h1 {
+      padding: 0;
+      border: 0;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .privacy {
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel-soft);
+      color: #bdc2b5;
+      font-size: 11px;
+    }
+    .privacy::before { color: var(--accent); }
+    .intro {
+      min-height: 82px;
+      align-items: center;
+      margin: 0;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #131411;
+    }
+    .intro h2 { margin-bottom: 4px; color: var(--text); font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+    .intro p { color: var(--muted); font-size: 12px; }
+    .tabs {
+      width: var(--control-panel-width);
+      gap: 5px;
+      padding: 4px;
+      border-color: var(--line);
+      border-radius: 9px;
+      background: var(--panel);
+    }
+    .tab { min-height: 38px; border-radius: 6px; color: var(--muted); }
+    .tab:hover { background: var(--panel-soft); color: var(--text); }
+    .tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+    .content-layout {
+      min-height: calc(100vh - 146px);
+      grid-template-columns: 216px minmax(0, 1fr);
+      gap: 0;
+      align-items: stretch;
+      background: #0f100e;
+    }
+    .content-layout.resources-collapsed { grid-template-columns: 58px minmax(0, 1fr); }
+    .tool-area { min-width: 0; padding: 16px; }
+    .workspace { grid-template-columns: minmax(0, 1fr) var(--control-panel-width); gap: 16px; }
+    .controls, .preview-card {
+      border-color: var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--text);
+    }
+    .controls { padding: 20px; }
+    .controls h3, .preview-heading h3 { color: var(--text); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+    .section-note { color: var(--muted); }
+    .control-group + .control-group { border-top-color: var(--line); }
+    .field label, .field legend { color: #d2d5cc; }
+    input[type="number"], select, input[type="text"] {
+      border-color: var(--line-strong);
+      background: #131512;
+      color: var(--text);
+    }
+    input[type="number"]:hover, select:hover, input[type="text"]:hover { border-color: #5c6255; }
+    input[type="color"] { border-color: var(--line-strong); background: #131512; }
+    input[type="range"] { accent-color: var(--accent); }
+    output { color: var(--accent); }
+    .ratio-option span {
+      min-height: 40px;
+      border-color: var(--line-strong);
+      background: var(--panel-soft);
+      color: #c9ccc3;
+    }
+    .ratio-option span::before { border-color: #697062; background: #131512; }
+    .ratio-option:hover span { border-color: #686d5e; background: #292c27; }
+    .ratio-option input:checked + span { border-color: var(--accent); background: rgba(215, 255, 69, .08); color: var(--accent); }
+    .ratio-option input:checked + span::before { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+    .ratio-option input:focus-visible + span { outline-color: var(--accent); }
+    .file-picker {
+      min-height: 46px;
+      border-color: #5b6253;
+      background: #131512;
+      color: #d9ddd2;
+    }
+    .file-picker:hover { border-color: var(--accent); background: rgba(215, 255, 69, .05); color: var(--accent); }
+    .button {
+      min-height: 40px;
+      border-color: var(--line-strong);
+      border-radius: 7px;
+      background: var(--panel-soft);
+      color: var(--text);
+      transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 120ms ease;
+    }
+    .button:hover:not(:disabled) { border-color: #686d5e; background: #292c27; }
+    .button:active:not(:disabled) { transform: translateY(1px); }
+    .button.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+    .button.primary:hover:not(:disabled) { background: #e0ff6d; }
+    .status { color: var(--muted); }
+    .status.error { color: var(--danger); }
+    .preview-card { overflow: hidden; }
+    .preview-heading {
+      min-height: 52px;
+      padding: 0 17px;
+      border-bottom-color: var(--line);
+      background: #151613;
+    }
+    .preview-meta { color: var(--muted); }
+    .canvas-stage {
+      position: relative;
+      min-height: clamp(480px, calc(100vh - 232px), 820px);
+      padding: 24px;
+      background-color: #10110f;
+      background-image: radial-gradient(circle, #2a2c27 .8px, transparent .8px);
+      background-size: 18px 18px;
+    }
+    .canvas-stage::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      pointer-events: none;
+      opacity: .42;
+      background:
+        linear-gradient(var(--accent), var(--accent)) left top / 18px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) left top / 1px 18px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) right top / 18px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) right top / 1px 18px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) left bottom / 18px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) left bottom / 1px 18px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) right bottom / 18px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) right bottom / 1px 18px no-repeat;
+    }
+    .canvas-stage > * { position: relative; z-index: 1; }
+    .canvas-stage canvas { box-shadow: 0 18px 50px rgba(0, 0, 0, .42); }
+    .empty-icon {
+      border-color: #4d5345;
+      border-radius: 50%;
+      background: var(--panel-raised);
+      color: var(--accent);
+      box-shadow: 0 0 0 8px rgba(215, 255, 69, .035);
+    }
+    .empty-state strong { color: var(--text); }
+    .empty-state p { color: var(--muted); }
+    .image-item { border-color: var(--line); background: #151613; }
+    .image-info strong { color: var(--text); }
+    .image-info span { color: var(--muted); }
+    .icon-button { color: var(--muted); }
+    .icon-button:hover:not(:disabled) { background: var(--panel-raised); color: var(--text); }
+    .tile-card { border-color: var(--line); background: var(--panel-soft); }
+    .tile-footer span { color: var(--muted); }
+    .resource-panel {
+      position: sticky;
+      top: 64px;
+      min-height: calc(100vh - 64px);
+      padding: 16px;
+      border: 0;
+      border-right: 1px solid var(--line);
+      border-radius: 0;
+      background: var(--panel);
+    }
+    .resource-panel h3 { color: var(--text); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+    .resource-toggle {
+      border-color: var(--line-strong);
+      background: var(--panel-soft);
+      color: var(--muted);
+    }
+    .resource-toggle:hover { border-color: #686d5e; background: #292c27; color: var(--text); }
+    .resource-note { color: var(--muted); }
+    .resource-link { border-color: var(--line); color: #d1d4cb; }
+    .resource-link:hover { border-color: #4b5046; background: var(--panel-soft); }
+    .resource-icon { background: #121310; color: #829078; }
+    .resource-copy span, .resource-arrow { color: #747b70; }
+    .qr-section { border-top-color: var(--line); }
+    .qr-section h4 { color: #cfd2c8; }
+    .qr-placeholder {
+      border-color: #555b4f;
+      background-color: #121310;
+      background-image: linear-gradient(45deg, #20231e 25%, transparent 25%, transparent 75%, #20231e 75%), linear-gradient(45deg, #20231e 25%, transparent 25%, transparent 75%, #20231e 75%);
+      color: var(--muted);
+    }
+    .qr-caption { color: var(--muted); }
+    footer { padding: 10px 18px; border-top: 1px solid var(--line); background: #151613; color: #777d72; }
+    @media (max-width: 1180px) {
+      .content-layout { grid-template-columns: 190px minmax(0, 1fr); }
+      .content-layout.resources-collapsed { grid-template-columns: 58px minmax(0, 1fr); }
+      .workspace { grid-template-columns: minmax(0, 1fr) 292px; }
+    }
+    @media (max-width: 900px) {
+      .intro { align-items: stretch; flex-direction: column; }
+      .tabs { width: 100%; }
+      .content-layout, .content-layout.resources-collapsed { grid-template-columns: 1fr; }
+      .tool-area { grid-row: 1; padding: 14px; }
+      .resource-panel { position: static; grid-row: 2; min-height: auto; border-top: 1px solid var(--line); border-right: 0; }
+      .workspace { grid-template-columns: 1fr; }
+      .workspace .preview-card { grid-column: 1; grid-row: 1; }
+      .workspace .controls { grid-column: 1; grid-row: 2; }
+      .controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+      .controls > h3, .controls > .section-note, .controls > .action-row, .controls > .status { grid-column: 1 / -1; }
+      .canvas-stage { min-height: 440px; }
+    }
+    @media (max-width: 600px) {
+      .app { padding: 0; }
+      .topbar { align-items: center; flex-direction: row; min-height: 64px; padding: 0 12px; margin: 0; }
+      .brand-copy { display: grid; gap: 1px; }
+      h1 { font-size: 9px; }
+      .privacy { padding: 5px 8px; }
+      .intro { padding: 14px 12px; }
+      .tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .tab { padding: 7px 5px; }
+      .tool-area { padding: 10px; }
+      .controls { display: block; padding: 17px; }
+      .canvas-stage { min-height: 360px; padding: 14px; }
+      .resource-panel { padding: 16px 12px; }
+      footer { flex-wrap: wrap; }
+    }
+    @media (max-width: 440px) {
+      .privacy { display: none; }
+    }
+    .brand-trigger { display: grid; place-items: center; flex: none; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+    .brand-trigger:hover .brand-logo { filter: brightness(1.08); transform: scale(1.04); }
+    .brand-trigger[aria-expanded="true"] .brand-logo { box-shadow: 0 0 0 3px rgba(65, 134, 245, .2); }
+    .brand-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .brand-logo { transition: filter 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
+    .content-layout, .content-layout.resources-collapsed { grid-template-columns: minmax(0, 1fr); }
+    .resource-backdrop { position: fixed; z-index: 29; inset: 64px 0 0; background: rgba(4, 5, 4, .68); backdrop-filter: blur(3px); }
+    .resource-panel,
+    .resources-collapsed .resource-panel {
+      position: fixed;
+      z-index: 30;
+      top: 76px;
+      left: 18px;
+      width: min(360px, calc(100vw - 36px));
+      max-height: calc(100vh - 94px);
+      min-height: 0;
+      overflow: auto;
+      padding: 18px;
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .56);
+    }
+    .resources-collapsed .resource-header { justify-content: space-between; }
+    .resources-collapsed .resource-panel h3 { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+    .resource-toggle-icon { transform: none !important; }
+    @media (max-width: 760px) {
+      .resource-panel, .resources-collapsed .resource-panel { top: 76px; left: 12px; width: calc(100vw - 24px); }
+    }
   </style>
 </head>
 <body>
@@ -452,7 +742,9 @@
   <main class="app" id="main-content">
     <header class="topbar">
       <div class="brand">
+        <button class="brand-trigger" id="brandTrigger" type="button" aria-haspopup="dialog" aria-expanded="true" aria-controls="resourcePanel" aria-label="打开或关闭相关链接">
         <svg class="brand-logo" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M512 512m-512 0a512 512 0 1 0 1024 0 512 512 0 1 0-1024 0Z" fill="#4186F5"/><path d="M611.944 302.056c0-15.701 2.75-30.802 7.816-44.917a384.238 384.238 0 0 0-186.11 2.956c-74.501-50.063-93.407-71.902-107.975-39.618a136.243 136.243 0 0 0-3.961 102.287 149.515 149.515 0 0 0-39.949 104.806c0 148.743 92.139 181.875 179.961 191.61a83.898 83.898 0 0 0-25.192 51.863c-40.708 22.518-91.94 8.261-115.181-32.058a83.117 83.117 0 0 0-60.466-39.98s-38.871-.361-2.879 23.408a102.97 102.97 0 0 1 43.912 56.906s23.398 75.279 133.531 51.863v65.913c0 10.443 13.548 42.63 102.328 42.63 71.275 0 94.913-30.385 94.913-42.987V690.485a90.052 90.052 0 0 0-26.996-72.03c83.996-9.381 173.328-40.204 179.6-176.098a164.706 164.706 0 0 1-21.129 1.365c-84.07 0-152.223-63.426-152.223-141.666z" fill="#fff"/><path d="M743.554 322.765a136.267 136.267 0 0 0-3.961-102.289s-32.396-10.445-107.979 39.618a385.536 385.536 0 0 0-11.853-2.956 132.623 132.623 0 0 0-7.816 44.917c0 78.24 68.152 141.667 152.222 141.667 7.171 0 14.222-.472 21.129-1.365.231-5.03.363-10.187.363-15.509a149.534 149.534 0 0 0-42.105-104.083z" fill="#fff" opacity=".4"/></svg>
+        </button>
         <div class="brand-copy"><span class="brand-name">开源好物集</span><h1>图片处理工具</h1></div>
       </div>
       <span class="privacy">本地处理，不上传图片</span>
@@ -467,12 +759,13 @@
       </div>
     </div>
 
+    <div class="resource-backdrop" id="resourceBackdrop" aria-hidden="true"></div>
     <div class="content-layout" id="contentLayout">
-      <aside class="resource-panel" id="resourcePanel" aria-labelledby="resourcePanelTitle">
+      <aside class="resource-panel" id="resourcePanel" role="dialog" aria-modal="true" aria-labelledby="resourcePanelTitle">
         <div class="resource-header">
           <h3 id="resourcePanelTitle">相关链接</h3>
-          <button class="resource-toggle" id="resourceToggle" type="button" aria-expanded="true" aria-controls="resourceContent" aria-label="收起相关链接">
-            <svg class="resource-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+          <button class="resource-toggle" id="resourceToggle" type="button" aria-label="关闭相关链接" title="关闭相关链接">
+            <svg class="resource-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
           </button>
         </div>
         <div id="resourceContent">
@@ -637,7 +930,7 @@
 
     /** 页面中需要频繁访问的元素 ID。 */
     const elementIds = [
-      'contentLayout', 'resourceToggle', 'resourceContent',
+      'contentLayout', 'brandTrigger', 'resourcePanel', 'resourceBackdrop', 'resourceToggle', 'resourceContent',
       'cropTab', 'joinTab', 'gridTab', 'cropPanel', 'joinPanel', 'gridPanel',
       'cropFile', 'cropPreset', 'cropWidth', 'cropHeight', 'cropZoom', 'cropZoomValue',
       'cropFormat', 'cropReset', 'cropDownload', 'cropStatus', 'cropMeta', 'cropEmpty', 'cropCanvas',
@@ -1879,24 +2172,31 @@
     }
 
     /**
-     * 展开或收起左侧相关链接栏，并同步按钮的可访问状态。
+     * 显示或隐藏品牌相关链接弹窗，并同步 Logo 的可访问状态。
+     * @param {boolean} open 弹窗是否可见
      * @returns {void}
      */
-    function toggleResourcePanel() {
-      /** 点击前相关链接栏是否处于展开状态。 */
-      const isExpanded = ui.resourceToggle.getAttribute('aria-expanded') === 'true';
-      /** 点击后相关链接栏应切换到的状态。 */
-      const nextExpanded = !isExpanded;
-      // 1. 同步内容可见性：收起后链接离开键盘焦点顺序。
-      ui.resourceContent.hidden = !nextExpanded;
-      ui.contentLayout.classList.toggle('resources-collapsed', !nextExpanded);
-      // 2. 同步按钮语义：辅助技术可读出当前状态与下一步操作。
-      ui.resourceToggle.setAttribute('aria-expanded', String(nextExpanded));
-      ui.resourceToggle.setAttribute('aria-label', nextExpanded ? '收起相关链接' : '展开相关链接');
+    function setResourceDialogOpen(open) {
+      ui.resourcePanel.hidden = !open;
+      ui.resourceBackdrop.hidden = !open;
+      ui.resourceContent.hidden = false;
+      ui.brandTrigger.setAttribute('aria-expanded', String(open));
     }
 
-    // 1. 资源栏交互：按钮可通过鼠标、回车键或空格键切换展开状态。
-    ui.resourceToggle.addEventListener('click', toggleResourcePanel);
+    // 1. Logo 切换弹窗；关闭按钮、遮罩和 Esc 均可退出。
+    ui.brandTrigger.addEventListener('click', function toggleResourceDialog() {
+      setResourceDialogOpen(ui.brandTrigger.getAttribute('aria-expanded') !== 'true');
+    });
+    ui.resourceToggle.addEventListener('click', function closeResourceDialog() {
+      setResourceDialogOpen(false);
+      ui.brandTrigger.focus();
+    });
+    ui.resourceBackdrop.addEventListener('click', function closeResourceDialogFromBackdrop() {
+      setResourceDialogOpen(false);
+    });
+    document.addEventListener('keydown', function closeResourceDialogFromKeyboard(event) {
+      if (event.key === 'Escape' && ui.brandTrigger.getAttribute('aria-expanded') === 'true') setResourceDialogOpen(false);
+    });
     // 2. 模式切换：选项卡支持点击和标准键盘导航。
     tabButtons.forEach(
     /** @param {HTMLButtonElement} button 待绑定的模式按钮；@returns {void} */
@@ -1938,7 +2238,9 @@
     ui.gridRows.addEventListener('change', handleGridDimension);
     ui.gridTiles.addEventListener('click', handleTileDownload);
     ui.gridDownloadAll.addEventListener('click', downloadAllTiles);
-    // 6. 生命周期清理：页面离开时归还对象 URL 占用的内存。
+    // 6. 初始展示品牌相关链接；每次打开或刷新页面均可见。
+    setResourceDialogOpen(true);
+    // 7. 生命周期清理：页面离开时归还对象 URL 占用的内存。
     window.addEventListener('beforeunload', releaseAllAssets);
   </script>
 </body>
